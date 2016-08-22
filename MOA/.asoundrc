@@ -1,0 +1,109 @@
+# ------------------------------------------------------
+# Custom asoundrc file for use with snd-aloop and JACK
+#
+
+# ------------------------------------------------------
+# playback device
+pcm.aloopPlayback {
+  type dmix
+  ipc_key 1
+  ipc_key_add_uid true
+  slave {
+    pcm "hw:Loopback,0,0"
+    format S32_LE
+    rate {
+      @func igetenv
+      vars [ JACK_SAMPLE_RATE ]
+      default 44100
+    }
+    period_size {
+      @func igetenv
+      vars [ JACK_PERIOD_SIZE ]
+      default 1024
+    }
+    buffer_size 4096
+  }
+}
+
+# capture device
+pcm.aloopCapture {
+  type dsnoop
+  ipc_key 2
+  ipc_key_add_uid true
+  slave {
+    pcm "hw:Loopback,0,1"
+    format S32_LE
+    rate {
+      @func igetenv
+      vars [ JACK_SAMPLE_RATE ]
+      default 44100
+    }
+    period_size {
+      @func igetenv
+      vars [ JACK_PERIOD_SIZE ]
+      default 1024
+    }
+    buffer_size 4096
+  }
+}
+
+
+# ------------------------------------------------------
+# software volume
+pcm.asoftvol {
+  type softvol
+  slave.pcm "aloopPlayback"
+
+  control { name PCM }
+
+  min_dB -51.0
+  max_dB  20.0
+}
+
+
+# duplex device
+pcm.aloopDuplex {
+  type asym
+  playback.pcm "asoftvol"
+  capture.pcm "aloopCapture"
+}
+
+# ------------------------------------------------------
+# default device
+
+pcm.!default {
+  type plug
+  slave.pcm "aloopDuplex"
+}
+
+# ------------------------------------------------------
+# alsa_in -j alsa_in -dcloop -q 1
+pcm.cloop {
+  type dsnoop
+  ipc_key 3
+  ipc_key_add_uid true
+  slave {
+    pcm "hw:Loopback,1,0"
+    format S32_LE
+    rate {
+      @func igetenv
+      vars [ JACK_SAMPLE_RATE ]
+      default 44100
+    }
+    period_size {
+      @func igetenv
+      vars [ JACK_PERIOD_SIZE ]
+      default 1024
+    }
+    buffer_size 4096
+  }
+}
+
+# ------------------------------------------------------
+# alsa_out -j alsa_out -dploop -q 1
+pcm.ploop {
+  type plug
+  slave {
+    pcm "hw:Loopback,1,1"
+  }
+}
