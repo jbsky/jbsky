@@ -1,0 +1,10 @@
+ 
+# VNC access, use with TightVNC
+INDEX=3
+DISK=64G
+PATH_IMAGE=/home/qemu/jessie.vhost.img
+BRIDGE=green
+RAM=512M
+TAP=tap${INDEX}
+MAC_TAP="72:A3:C3:F7:67:04"
+MAC_NET="72:A3:C3:F7:67:06"

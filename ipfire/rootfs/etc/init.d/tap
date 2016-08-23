@@ -1,0 +1,49 @@
+#!/bin/sh
+########################################################################
+# Begin $rc_base/init.d/tap
+#######################################################################
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+
+INTERFACE=orange0
+MAC=72:A3:C3:F7:6E:01
+KVM=qemu
+case "${1}" in
+   start)
+		boot_mesg "Create virtual interface for dmz..."
+		modprobe tun && 
+		sleep 2 &&
+		ip tuntap add mode tap dev $INTERFACE group $KVM &&
+
+		# assign MAC address to $INTERFACE
+		ip link set $INTERFACE address $MAC &&
+
+		
+		# Change settings on tap1 to improve performance for virtio
+		ethtool --offload $INTERFACE gso off tso off &&
+
+		modprobe vhost_net
+		evaluate_retval
+      ;;
+
+   stop)
+		boot_mesg "Remove virtual interface for dmz..."
+
+		tunctl -d $INTERFACE &&
+
+		sleep 2 &&
+        rmmod vhost_net &&
+
+		sleep 2 &&
+	  	rmmod tun
+		evaluate_retval
+
+      ;;
+   *)
+      echo "Usage: ${0} {start|stop}"
+      exit 1
+      ;;
+esac
+
+# End $rc_base/init.d/tap

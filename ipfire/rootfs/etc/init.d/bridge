@@ -1,0 +1,79 @@
+#!/bin/sh
+########################################################################
+# Begin $rc_base/init.d/bridge
+#######################################################################
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+. /var/ipfire/ethernet/settings
+a_file=/root/ipfire/bridge
+
+#
+case "${1}" in
+   start)
+		while read line; 
+		do 
+			card=$(echo $line | cut -f1 -d=)
+			bool=$(echo $line | cut -f2 -d=)
+			if [ $bool = "yes" ];then
+				boot_mesg "Create bridge for ${card}..."
+				# down green0
+				ifconfig ${card,,}0 0.0.0.0 &&		
+
+				ip link set ${card,,}0 down &&
+				# rename green0 to green1
+				ip link set ${card,,}0 name ${card,,}1 &&
+				# create new bridge green0
+				brctl addbr ${card,,}0 &&
+				# wait 2 seconds because udev try to rename the nics
+				# if the real green nic was added to fast...
+				adress=${card^^}"_ADDRESS"&&
+				ifconfig ${card,,}0 ${!adress}&&	
+				brctl addif ${card,,}0 ${card,,}1 &&
+				ip link set ${card,,}1 up &&
+
+				sleep 2
+				evaluate_retval
+			fi
+		done < ${a_file}
+	   ;;
+
+   stop)
+		while read line; 
+		do 
+			card=$(echo $line | cut -f1 -d=)
+			bool=$(echo $line | cut -f2 -d=)
+			if [ ${bool,,} = "yes" ];then
+				boot_mesg "Remove bridge for ${card,,}..."
+				
+				brctl delif ${card,,}0 ${card,,}1 &&
+				ifconfig ${card,,}0 0.0.0.0	&&			
+
+				# Bring nic's down
+				ip link set ${card,,}1 down &&
+
+				# Bring bridge down
+				ip link set ${card,,}0 down &&
+
+				# Delete Bridge
+				brctl delbr ${card,,}0 &&
+
+				# rename tap1 to orange0 
+				ip link set ${card,,}1 name ${card,,}0 &&
+				adress=${card^^}"_ADDRESS" &&
+				ifconfig ${card,,}0 ${!adress} 
+				evaluate_retval
+				
+			fi
+
+		done < ${a_file}
+
+      ;;
+   *)
+      echo "Usage: ${0} {start|stop}"
+      exit 1
+      ;;
+esac
+
+# End $rc_base/init.d/bridge
+	
