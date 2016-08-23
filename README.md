@@ -1,6 +1,14 @@
-# myNux
-myDebian
+# Repository jbsky
 
-Scripts utilisé sur Debian.
+## For debian
+<pre>  
+debian   _____ roots
+          |___ patch
+          |___ installer
+</pre>
 
-1-MAO
+## For ipfire
+<pre>       
+ipfire   _____ roots  
+          |___ patch  
+          |___ installer  </pre>
