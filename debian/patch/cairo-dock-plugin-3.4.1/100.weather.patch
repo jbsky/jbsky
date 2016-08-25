@@ -1,0 +1,22 @@
+--- cairo-dock-plugins-3.4.1/weather/src/applet-read-data.c	2014-10-15 16:22:16.000000000 +0200
++++ cairoplug/weather/src/applet-read-data.c	2016-08-26 00:07:29.719172359 +0200
+@@ -30,7 +30,7 @@
+ #include "applet-load-icons.h"
+ #include "applet-read-data.h"
+ 
+-#define CD_WEATHER_BASE_URL "http://xml.weather.com"
++#define CD_WEATHER_BASE_URL "http://wxdata.weather.com/wxdata"
+ 
+ 
+ static xmlDocPtr _cd_weather_open_xml_buffer (const gchar *cData, xmlNodePtr *root_node, const gchar *cRootNodeName, GError **erreur)
+--- cairo-dock-plugins-3.4.1/weather/src/applet-config.c	2014-10-15 16:22:16.000000000 +0200
++++ cairoplug/weather/src/applet-config.c	2016-08-26 00:07:14.811173054 +0200
+@@ -174,7 +174,7 @@
+ 	gldi_task_discard (myData.pGetLocationTask);
+ 	myData.pGetLocationTask = NULL;
+ }
+-#define CD_WEATHER_BASE_URL "http://xml.weather.com"
++#define CD_WEATHER_BASE_URL "http://wxdata.weather.com/wxdata"
+ static void _cd_weather_search_for_location (GtkEntry *pEntry, GldiModuleInstance *myApplet)
+ {
+ 	const gchar *cLocationName = gtk_entry_get_text (pEntry);
