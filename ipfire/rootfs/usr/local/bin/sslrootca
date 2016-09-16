@@ -1,0 +1,27 @@
+#!/bin/bash
+if [ -f /etc/default/ipsec ];
+then
+	. /etc/default/ipsec
+else
+   	echo "File $FILE does not exist."
+	echp "exit"
+fi
+
+echo "Mise en place des répertoire et des fichiers nécessaires à openssl"
+rm -fR /etc/ssl/{root_ca,web_ca,ipsec_ca}
+mkdir -p /etc/ssl/{ipsec_ca,root_ca,web_ca}/{certs,crl,newcerts,private}
+touch /etc/ssl/{root_ca,web_ca,ipsec_ca}/{index.db,serial}
+
+cd ${PATH_SSL}/root_ca
+echo
+echo "Création de l'autorité de certification racine ROOT_CA"
+echo
+echo "Common Name : '${ORGANISATION} Certification Authority'"
+echo "Oranization Unit :'Secure Digital Certificate Signing'"
+echo "Organization Name : '${ORGANISATION}'"
+echo 
+openssl req -x509 -config /etc/ssl/ipsec.cnf -newkey rsa:8192 -sha256 -extensions ROOT_CA -days 3650 -keyout private/root_ca.key -out root_ca.pem
+echo "Initialisation du serial par un nombre aléatoire."
+
+openssl x509 -serial -noout -in root_ca.pem | cut -d= -f2 > serial
+

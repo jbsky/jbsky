@@ -1,0 +1,43 @@
+#!/bin/bash
+
+if [ -f /etc/default/ipsec ];
+then
+        . /etc/default/ipsec
+else
+        echo "File $FILE does not exist."
+        echp "exit"
+fi
+PATH_SSL=/etc/ssl
+
+cd ${PATH_SSL}/ipsec_ca
+sed 's/^DNS.1.*$/DNS.1='${CN}'/g'  ${PATH_SSL}/ipsec.cnf
+
+echo "Génération de la clé privé."
+echo 
+openssl genrsa  -out private/${SERVER}_ipsec.key 4096  -config /etc/ssl/ipsec.cnf
+
+echo "Génération de la demande de signature du certificat."
+echo 
+echo "CN = ${CN}"
+echo "OU = Certificat Serveur IPSec"
+echo
+openssl req -key private/${SERVER}_ipsec.key -sha256 -out ${SERVER}_ipsec.req -new -nodes -config ${PATH_SSL}/ipsec.cnf
+echo
+echo "Signature du certificat avec l'autorité ${SERVER}_IPSEC en spécifiant les extentions ${SERVER}_IPSEC." 
+echo 
+openssl ca -name ipsec_ca -extensions ${SERVER^^}_IPSEC -in ipfire_ipsec.req -out ipfire_ipsec.pem -config  ${PATH_SSL}/ipsec.cnf
+
+#cat <<EOF >> ${PATH_SSL}/${SERVER}_ipsec.cnf
+#[IPFIRE_IPSEC]
+#nsComment                       = "Certificat Serveur IPSec"
+#subjectKeyIdentifier            = hash
+#authorityKeyIdentifier          = keyid,issuer:always
+#issuerAltName                   = issuer:copy
+#subjectAltName                  = DNS:@alt_names
+#basicConstraints                = critical,CA:FALSE
+#keyUsage                        = digitalSignature, nonRepudiation, keyEncipherment
+#nsCertType                      = server
+#extendedKeyUsage                = serverAuth
+#EOF
+# FIN IPSEC_CA
+

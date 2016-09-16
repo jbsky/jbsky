@@ -1,0 +1,33 @@
+cat <<EOF > /var/ipfire/vpn/settings 
+ENABLED=off
+ROOTCERT_OU=Secure Digital Certificate Signing
+ROOTCERT_EMAIL=
+ROOTCERT_HOSTNAME=${ORGANISATION} Intermediate Certification Authority for IPSec Service
+ROOTCERT_CITY=
+ROOTCERT_STATE=
+ROOTCERT_COUNTRY=FR
+ROOTCERT_ORGANIZATION=${ORGANISATION}
+VPN_DELAYED_START=0
+EOF
+
+cat << EOF > /var/ipfire/vpn/caconfig
+1,ROOTCA,C=FR O=${ORGANISATION}  OU=Secure Digital Certificate Signing  CN=${ORGANISATION} Certification Authority
+EOF
+
+rm /var/ipfire/certs/hostcert.pem
+rm /var/ipfire/certs/hostkey.pem
+rm /var/ipfire/ca/cacert.pem
+rm /var/ipfire/ca/ROOTCAcert.pem
+rm /var/ipfire/private/cakey.pem
+
+ln -s /etc/ssl/ipsec_ca/ipfire_ipsec.pem /var/ipfire/certs/hostcert.pem
+ln -s /etc/ssl/ipsec_ca/private/ipfire_ipsec.key /var/ipfire/certs/hostkey.pem
+ln -s /etc/ssl/ipsec_ca/ipsec_ca.pem /var/ipfire/ca/cacert.pem
+ln -s /etc/ssl/root_ca/root_ca.pem /var/ipfire/ca/ROOTCAcert.pem
+ln -s /etc/ssl/ipsec_ca/private/ipsec_ca.key /var/ipfire/private/cakey.pem
+
+wget https://raw.githubusercontent.com/jbsky/ipfire-2.x/84e2a906a5c102605179edf731efa793f56e38b1/html/cgi-bin/vpnmain.cgi
+wget https://raw.githubusercontent.com/jbsky/ipfire-2.x/84e2a906a5c102605179edf731efa793f56e38b1/html/cgi-bin/connections.cgi
+chmod +x *.cgi
+mv *.cgi /srv/web/ipfire/cgi-bin/ 
+# echo $((`wc -l ${PATH_INSTALL}/vpn/config | awk '{ print $1}'`+1)),off,${NOM_CLIENT},CN=${NOM_CLIENT}.${NOM_DOMAINE} OU=Client VPN,host,cert,,,,${NET_GREEN},,,${IP_VPN_CLIENT}/32,,,,,,,,,,,,,,,,,,,,>>${PATH_INSTALL}/vpn/config
