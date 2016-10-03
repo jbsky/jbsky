@@ -1,18 +1,19 @@
-#!/bin/bash
-if [ -f /etc/default/ipsec ];
+#!/bin/bash -x
+if [ -f /etc/default/ssl ];
 then
-	. /etc/default/ipsec
+	. /etc/default/ssl
 else
-   	echo "File $FILE does not exist."
-	echp "exit"
+	echo "PATH_SSL=/etc/ssl" >/etc/default/ssl 
+	. /etc/default/ssl
 fi
 
 echo "Mise en place des répertoire et des fichiers nécessaires à openssl"
-rm -fR /etc/ssl/{root_ca,web_ca,ipsec_ca}
-mkdir -p /etc/ssl/{ipsec_ca,root_ca,web_ca}/{certs,crl,newcerts,private}
-touch /etc/ssl/{root_ca,web_ca,ipsec_ca}/{index.db,serial}
+rm -fR ${PATH_SSL}/{root,web_ca,ipsec}
+mkdir -p ${PATH_SSL}/{ipsec,root,web}/{certs,crl,newcerts,private}
+touch ${PATH_SSL}/{root,web,ipsec}/{index.db,serial}
 
-cd ${PATH_SSL}/root_ca
+
+cd ${PATH_SSL}/root
 echo
 echo "Création de l'autorité de certification racine ROOT_CA"
 echo
@@ -20,8 +21,8 @@ echo "Common Name : '${ORGANISATION} Certification Authority'"
 echo "Oranization Unit :'Secure Digital Certificate Signing'"
 echo "Organization Name : '${ORGANISATION}'"
 echo 
-openssl req -x509 -config /etc/ssl/ipsec.cnf -newkey rsa:8192 -sha256 -extensions ROOT_CA -days 3650 -keyout private/root_ca.key -out root_ca.pem
+openssl req -x509 -config ${PATH_SSL}/ipsec.cnf -newkey rsa:8192 -sha256 -extensions ROOT -days 3650 -keyout ${PATH_SSL}/root/private/ca.key -out ${PATH_SSL}/root/ca.pem
 echo "Initialisation du serial par un nombre aléatoire."
-
-openssl x509 -serial -noout -in root_ca.pem | cut -d= -f2 > serial
-
+chmod 600 
+openssl x509 -serial -noout -in ca.pem | cut -d= -f2 > serial
+chmod -R 600 ${PATH_SSL}/{root,ipsec,web}/private
