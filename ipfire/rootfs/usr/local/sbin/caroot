@@ -4,18 +4,25 @@ then
 	. /etc/default/ssl
 else
 
-   	echo "Please enter the name of your cnf files, followed by [ENTER]:"
-        read CONFIG
-        echo "CONFIG=${CONFIG}" >>/etc/default/ssl
+	echo "Please enter the name of your cnf files, followed by [ENTER]:"
+	read CONFIG
+	echo "CONFIG=${CONFIG}" >>/etc/default/ssl
 	echo "Please enter the path for your ssl files, followed by [ENTER]:"
 	read PATH_SSL
 	echo "PATH_SSL=${PATH_SSL}" >>/etc/default/ssl 
-        echo "Please enter the IP or FQND of your Ipsec server, followed by [ENTER]:"
-        read CN
-        echo "CN=${CN}" >>/etc/default/ssl
-        echo "Please enter the name of your Organisation, followed by [ENTER]:"
-        read Org
-        echo "Org=${Org}" >>/etc/default/ssl
+	echo "Please enter the IP or FQND of your Ipsec server, followed by [ENTER]:"
+	read CN
+	echo "CN=${CN}" >>/etc/default/ssl
+	echo "Please enter the name of your Organisation, followed by [ENTER]:"
+	read Org
+	echo "ORGANISATION=${Org}" >>/etc/default/ssl
+	echo "New Server Ipsec : `hostname` press [ENTER] to confirm."
+	read SRV_IPSEC
+	if [[ "$SRV_IPSEC" == "" ]];then
+		echo "SRV_IPSEC=`hostname`">>/etc/default/ssl
+	else
+		echo "SRV_IPSEC=${SRV_IPSEC}">>/etc/default/ssl
+	fi
 
 fi
 
@@ -25,14 +32,14 @@ mkdir -p ${PATH_SSL}/{ipsec,root,web}/{certs,crl,newcerts,private}
 touch ${PATH_SSL}/{root,web,ipsec}/{index.db,serial}
 
 
-cd ${PATH_SSL}/root
 echo
 echo "Création de l'autorité de certification [ROOT]"
 echo
-echo "Common Name 		: '${ORGANISATION} Certification Authority'"
-echo "Oranization Unit 	:'Secure Digital Certificate Signing'"
+echo "Organizational Unit Name	: 'Secure Digital Certificate Signing'"
+echo "Common Name			: '${ORGANISATION} Certification Authority'"
 echo 
+echo "Création de la clé privée..."
 openssl req -x509 -config ${PATH_SSL}/${CONFIG} -newkey rsa:8192 -sha256 -extensions ROOT_CA -days 3650 -keyout ${PATH_SSL}/root/private/ca.key -out ${PATH_SSL}/root/ca.pem
-echo "Initialisation du serial par un nombre aléatoire."
+echo "Initialisation du serial pour ${PATH_SSL}/root/ca.pem."
 openssl x509 -serial -noout -in ${PATH_SSL}/root/ca.pem | cut -d= -f2 > ${PATH_SSL}/root/serial
 chmod -R 600 ${PATH_SSL}/{root,ipsec,web}/private

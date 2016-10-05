@@ -1,0 +1,45 @@
+#!/bin/bash -x
+
+if [ -f /etc/default/ssl ];
+then
+	. /etc/default/ssl
+else
+	echo "File $FILE does not exist."
+	echo "error exit 1"
+	return 1
+fi
+
+echo "Nom du client:"
+read CLIENT
+echo 
+echo 
+echo "Création du certificat d'accès IPsec."
+
+echo "Common Name			:'${CLIENT}.${CN}'"
+echo "Organizational Unit Name	: 'Certificat Acces IPSec'"
+echo
+echo
+echo "Génération de la clé privé crypté..."
+openssl genrsa  -out private/${CLIENT}.key 4096
+echo "Création de la clé publique..."
+openssl req -key private/${CLIENT}.key -sha256 -out ${CLIENT}.req -new -nodes -config /etc/ssl/ipsec.cnf
+echo "Signature du certificat [CLIENT] par l'autorité [IPSEC]." 
+echo
+openssl ca -name IPSEC -extensions CLIENT -in ${PATH_SSL}/ipsec/${CLIENT}.req -out ${PATH_SSL}/ipsec/${CLIENT}.pem -config ${PATH_SSL}/${CONFIG}
+echo
+echo "Portage des fichiers vers un format p12."
+echo
+openssl pkcs12 -export -inkey ${PATH_SSL}/ipsec/private/${CLIENT}.key -in ${PATH_SSL}/ipsec/${CLIENT}.pem -name "${CLIENT}.${CN}" -certfile ${PATH_SSL}/ipsec/ca.pem -caname "${CN}" -out ${PATH_SSL}/ipsec/${CLIENT}.p12 
+chmod -R 600 ${PATH_SSL}/{root,ipsec,web}/private
+
+ln -s ${PATH_SSL}/ipsec/private/${CLIENT}.key /var/ipfire/private/${CLIENT}key.pem
+ln -s ${PATH_SSL}/ipsec/${CLIENT}.pem /var/ipfire/certs/${CLIENT}cert.pem
+ln -s ${PATH_SSL}/ipsec/${CLIENT}.p12 /var/ipfire/certs/
+
+# FIN IPSEC_CA
+# echo $((`wc -l /var/ipfire/vpn/config | awk '{ print $1}'`+1)),off,windows,CN=windows.10.10.100.8 OU=Certificat Client IPSec,host,cert,,,,0.0.0.0/0,,,172.16.0.0/24,,,,,,,,,,,,,,,,,,,,>>/var/ipfire/vpn/config
+# ln -s /etc/ssl/ipsec_ca/private/windows_ipsec.key /var/ipfire/private/windowskey.pem
+# ln -s /etc/ssl/ipsec_ca/windows_ipsec.pem /var/ipfire/certs/windowscert.pem
+# ln -s /etc/ssl/ipsec_ca/windows.p12 /var/ipfire/certs/windows.p12
+
+echo $((`wc -l /var/ipfire/vpn/config | awk '{ print $1}'`+1)),off,${CLIENT},CN=${CLIENT}.${CN} OU=Certificat Acces IPSec,host,cert,,,,0.0.0.0/0,,,172.16.0.0/24,,,,,,,,,,,,,,,,,,,,>>/var/ipfire/vpn/config

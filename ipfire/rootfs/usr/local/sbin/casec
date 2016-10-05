@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ -f /etc/default/ssl ];
+then
+	. /etc/default/ssl
+else
+	echo "File $FILE does not exist."
+	echo "error exit 1"
+	return 1
+fi
+
+echo "Création du certificat d'autorité [IPSEC]."
+echo
+echo "Organizational Unit Name	: 'Secure Digital Certificate Signing'"
+echo "Common Name			: '${ORGANISATION} Certification Authority for IPSec Service'"
+echo
+echo "Génération de la clé privé crypté..."
+openssl req -newkey rsa:8192 -sha256 -keyout ${PATH_SSL}/ipsec/private/ca.key -out ${PATH_SSL}/ipsec/ca.req  -config ${PATH_SSL}/${CONFIG}
+echo "Signature du certificat d'autorité [IPSEC] par [ROOT]."
+echo "Notre autorité de certification intermédiaire aura les extentions signalé dans la section IPSEC_CA."
+openssl ca -extensions IPSEC_CA -in ${PATH_SSL}/ipsec/ca.req -out ${PATH_SSL}/ipsec/ca.pem -config ${PATH_SSL}/${CONFIG}
+echo "Génèration du serial pour ${PATH_SSL}/ipsec/ca.pem."
+openssl x509 -serial -noout -in ${PATH_SSL}/ipsec/ca.pem | cut -d= -f2 > ${PATH_SSL}/ipsec/serial
+chmod -R 600 ${PATH_SSL}/{root,ipsec,web}/private
+echo
+echo
+echo "TODO"
+echo "On peut maintenant créer des certificats client/serveur et les signer avec notre autorité intermédiaire."
+echo # FIN IPSEC_CA
