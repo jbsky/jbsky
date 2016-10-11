@@ -1,0 +1,29 @@
+#!/bin/bash
+
+if [ -f /etc/default/ssl ];
+then
+	. /etc/default/ssl
+else
+	echo "File $FILE does not exist."
+	echo "error exit 1"
+	return 1
+fi
+
+echo "Fix DNS.1 to Common Name '${CN}' with help of sed" 
+sed -i -e 's/^DNS.1.*$/DNS.1='${CN}'/g'  ${PATH_SSL}/ipsec.cnf
+
+echo "Création du certificat [HOTE_IPSEC] pour {HOTE_IPSEC}."
+echo
+echo "Organizational Unit Name	: 'Certificat Hote IPSec'"
+echo "Common Name			: '${CN}'"
+echo
+echo "Génération de la clé privé crypté..."
+openssl genrsa  -out ${PATH_SSL}/ipsec/private/${HOTE_IPSEC}.key 4096  -config ${PATH_SSL}/${CONFIG}
+echo "Création de la clé publique..."
+openssl req -key ${PATH_SSL}/ipsec/private/${HOTE_IPSEC}.key -sha256 -out ${PATH_SSL}/ipsec/${HOTE_IPSEC}.req -new -nodes -config ${PATH_SSL}/${CONFIG}
+echo
+echo "Signature du certificat [SERVEUR] par l'autorité [IPSEC]." 
+echo "Notre certificat Hôte aura les extentions signalés dans la section [SERVEUR]."
+openssl ca -name IPSEC -extensions HOTE -in ${PATH_SSL}/ipsec/${HOTE_IPSEC}.req -out ${PATH_SSL}/ipsec/${HOTE_IPSEC}.pem -config  ${PATH_SSL}/${CONFIG}
+chmod -R 600 ${PATH_SSL}/{root,ipsec,web}/private
+echo # FIN IPSEC_CA
