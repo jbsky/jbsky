@@ -1,3 +1,28 @@
+#!/bin/bash -x
+
+if [ -f /etc/default/ssl ];
+then
+	. /etc/default/ssl
+else
+	echo "File $FILE does not exist."
+	echo "error exit 1"
+	return 1
+fi
+
+echo "Nom du client:"
+read CLIENT
+echo 
+echo 
+
+echo $((`wc -l /var/ipfire/vpn/config | awk '{ print $1}'`+1)),off,${CLIENT},CN=${CLIENT}.${CN} OU=Certificat Acces IPSec,host,cert,,,,0.0.0.0/0,,,172.16.0.0/24,,,,,,,,,,,,,,,,,,,,>>/var/ipfire/vpn/config
+
+
+
+
+
+
+
+
 cat <<EOF > /var/ipfire/vpn/settings 
 ENABLED=off
 ROOTCERT_OU=Secure Digital Certificate Signing
