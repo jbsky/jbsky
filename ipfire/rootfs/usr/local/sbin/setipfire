@@ -45,11 +45,11 @@ rm /var/ipfire/ca/cacert.pem
 rm /var/ipfire/ca/ROOTCAcert.pem
 rm /var/ipfire/private/cakey.pem
 
-ln -s /etc/ssl/ipsec_ca/ipfire_ipsec.pem /var/ipfire/certs/hostcert.pem
-ln -s /etc/ssl/ipsec_ca/private/ipfire_ipsec.key /var/ipfire/certs/hostkey.pem
-ln -s /etc/ssl/ipsec_ca/ipsec_ca.pem /var/ipfire/ca/cacert.pem
-ln -s /etc/ssl/root_ca/root_ca.pem /var/ipfire/ca/ROOTCAcert.pem
-ln -s /etc/ssl/ipsec_ca/private/ipsec_ca.key /var/ipfire/private/cakey.pem
+ln -s /etc/ssl/ipsec/ipfire.pem /var/ipfire/certs/hostcert.pem
+ln -s /etc/ssl/ipsec/private/ipfire.key /var/ipfire/certs/hostkey.pem
+ln -s /etc/ssl/ipsec/ca.pem /var/ipfire/cacert.pem
+ln -s /etc/ssl/root/ca.pem /var/ipfire/ca/ROOTCAcert.pem
+ln -s /etc/ssl/ipseca/private/ca.key /var/ipfire/private/cakey.pem
 
 wget https://raw.githubusercontent.com/jbsky/ipfire-2.x/84e2a906a5c102605179edf731efa793f56e38b1/html/cgi-bin/vpnmain.cgi
 wget https://raw.githubusercontent.com/jbsky/ipfire-2.x/84e2a906a5c102605179edf731efa793f56e38b1/html/cgi-bin/connections.cgi
