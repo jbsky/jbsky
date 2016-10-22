@@ -27,7 +27,7 @@ case "${1}" in
 				brctl addbr ${card,,}0 &&
 				# wait 2 seconds because udev try to rename the nics
 				# if the real green nic was added to fast...
-				adress=${card^^}"_ADDRESS"&&
+				adress=${card^^}"_ADDRESS" netmask ${card^^}"_NETMASK"&&
 				ifconfig ${card,,}0 ${!adress}&&	
 				brctl addif ${card,,}0 ${card,,}1 &&
 				ip link set ${card,,}1 up &&

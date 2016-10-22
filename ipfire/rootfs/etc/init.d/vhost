@@ -114,8 +114,8 @@ start_host(){
 			-daemonize \
 			-monitor unix:${FILE_MONITOR},server,nowait,nodelay \
 			-pidfile ${PID_FILE} \
-			-boot c -usbdevice tablet \
-			-cdrom ${PATH_ISO} &&
+			-boot c -usbdevice tablet && # \
+		#	-cdrom ${PATH_ISO} &&
 			evaluate_retval
 
 	fi
