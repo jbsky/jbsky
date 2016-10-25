@@ -3,10 +3,10 @@ RANDFILE                          = $ENV::HOME/.rnd
 
 
 [ca]
-default_ca                        = IPSEC                   # The default ca section
+default_ca                        = ROOT                    # The default ca section
  
-[IPSEC]
-dir                               = /etc/ssl/ipsec          # Where everything is kept
+[ROOT]
+dir                               = /etc/ssl/root           # Where everything is kept
 certs                             = $dir/certs              # Where the issued certs are kept
 new_certs_dir                     = $dir/newcerts           # default place for new certs.
 database                          = $dir/index.db           # database index file.
@@ -18,20 +18,26 @@ default_md                        = sha256                  # which md to use.
 preserve                          = no                      # keep passed DN ordering
 policy                            = policy_match            # voir le champs ci dessous
  
-[IPSEC_CA]
-nsComment                         = "IPSEC_CA"
+[ROOT_CA]
+nsComment                         = "ROOT_CA"
 subjectKeyIdentifier              = hash
 authorityKeyIdentifier            = keyid,issuer:always
-basicConstraints                  = critical,CA:TRUE,pathlen:0
+basicConstraints                  = critical,CA:TRUE,pathlen:1
+keyUsage 						  = critical, digitalSignature, cRLSign, keyCertSign
+
+[ IPSEC_CA ]
+subjectKeyIdentifier              = hash
+authorityKeyIdentifier            = keyid:always,issuer
+basicConstraints                  = critical, CA:true, pathlen:0
 keyUsage                          = critical, digitalSignature, cRLSign, keyCertSign
+nsCertType                        = sslCA
 
 [req]
 default_bits                      = 2048
 distinguished_name                = req_distinguished_name
-string_mask                       = utf8only
-default_md                        = sha256                  # SHA-2
-x509_extensions                   = IPSEC_CA                # Extension to add when the -x509 option is used.
-
+string_mask        				  = utf8only
+default_md         	  			  = sha256                  # SHA-2
+x509_extensions    				  = ROOT_CA
 
 [req_distinguished_name]
 countryName                       = Country Name (2 letter code)
@@ -46,8 +52,8 @@ commonName_max                    = 64
 emailAddress                      = Email Address
 emailAddress_max                  = 40
 stateOrProvinceName_default       = NullPart
-commonName_default                = windows.172.16.254.1
-organizationalUnitName_default    = Certificat Acces IPSec
+commonName_default                = Toto Certification Authority
+organizationalUnitName_default    = Secure Digital Certificate Signing
 localityName_default              = Paris
 organizationName_default          = Toto
 countryName_default               = FR
@@ -62,27 +68,3 @@ organizationName                  = match
 organizationalUnitName            = optional
 commonName                        = supplied
 emailAddress                      = optional
-
-[HOTE]
-nsComment                       = "Certificat Hote IPSec"
-subjectKeyIdentifier            = hash
-authorityKeyIdentifier          = keyid,issuer:always
-issuerAltName                   = issuer:copy
-subjectAltName                  = @alt_names
-basicConstraints                = critical,CA:FALSE
-keyUsage                        = digitalSignature, nonRepudiation, keyEncipherment
-nsCertType                      = server
-extendedKeyUsage                = serverAuth
- 
-[alt_names]
-DNS.1=172.16.254.1
-
-[ACCES]
-nsComment                       = "Certificat Access IPSec"
-subjectKeyIdentifier            = hash
-authorityKeyIdentifier          = keyid,issuer:always
-issuerAltName                   = issuer:copy
-basicConstraints                = critical,CA:FALSE
-keyUsage                        = digitalSignature, nonRepudiation, keyEncipherment
-nsCertType                      = server
-extendedKeyUsage                = clientAuth

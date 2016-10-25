@@ -1,5 +1,22 @@
-#!/bin/bash -x
-
+#!/bin/bash
+while getopts ":vh:" option
+do
+ case $option in
+  h)
+   echo ""
+   echo "Usage  : $0 [-vh]"
+   echo ""
+   echo "option :"   
+   echo "          -v  verbose"
+   echo "          -h  help"
+   echo ""
+   exit -1
+   ;;
+  v)
+   v=1
+   ;;
+ esac
+done
 if [ -f /etc/default/ssl ];
 then
 	. /etc/default/ssl
@@ -8,39 +25,37 @@ else
 	echo "error exit 1"
 	return 1
 fi
+CONFIG=ipsec.cnf
 
 echo "Nom du client:"
 read CLIENT
-echo 
-echo 
-echo "Création du certificat d'accès IPsec."
+sed -i -e 's/^commonName_default.*$/commonName_default                = '${CLIENT}.${CN}'/g'  ${PATH_SSL}/${CONFIG}
+sed -i -e 's/^organizationalUnitName_default.*$/organizationalUnitName_default    = Certificat Acces IPSec/g'  ${PATH_SSL}/${CONFIG}
+echo
+if [[ "$v" == "1" ]]; then
+	echo "Génération de la clé privé crypté..."
+	echo "openssl genrsa  -out ${PATH_SSL}/ipsec/private/${CLIENT}.key 4096 -config ${PATH_SSL}/${CONFIG}"
 
-echo "Common Name			:'${CLIENT}.${CN}'"
-echo "Organizational Unit Name	: 'Certificat Acces IPSec'"
-echo
-echo
-echo "Génération de la clé privé crypté..."
+fi
 openssl genrsa  -out ${PATH_SSL}/ipsec/private/${CLIENT}.key 4096 -config ${PATH_SSL}/${CONFIG}
+if [[ "$v" == "1" ]]; then
+	echo "Création de la clé publique..."
+	echo "openssl req -key ${PATH_SSL}/ipsec/private/${CLIENT}.key -sha256 -out ${PATH_SSL}/ipsec/${CLIENT}.req -new -nodes -config ${PATH_SSL}/${CONFIG}"
 
-echo "Création de la clé publique..."
+fi
 openssl req -key ${PATH_SSL}/ipsec/private/${CLIENT}.key -sha256 -out ${PATH_SSL}/ipsec/${CLIENT}.req -new -nodes -config ${PATH_SSL}/${CONFIG}
-echo "Signature du certificat [ACCESS] par l'autorité [IPSEC]." 
-echo
-openssl ca -name IPSEC -extensions ACCESS -in ${PATH_SSL}/ipsec/${CLIENT}.req -out ${PATH_SSL}/ipsec/${CLIENT}.pem -config ${PATH_SSL}/${CONFIG}
-echo
-echo "Portage des fichiers vers un format p12."
-echo
-openssl pkcs12 -export -inkey ${PATH_SSL}/ipsec/private/${CLIENT}.key -in ${PATH_SSL}/ipsec/${CLIENT}.pem -name "${CLIENT}.${CN}" -certfile ${PATH_SSL}/ipsec/ca.pem -caname "${CN}" -out ${PATH_SSL}/ipsec/${CLIENT}.p12 
-chmod -R 600 ${PATH_SSL}/{root,ipsec,web}/private
+if [[ "$v" == "1" ]]; then
+	echo "Signature du certificat [ACCESS] par l'autorité [IPSEC]." 
+	echo "openssl ca -name IPSEC -extensions ACCES -in ${PATH_SSL}/ipsec/${CLIENT}.req -out ${PATH_SSL}/ipsec/certs/${CLIENT}.pem -config ${PATH_SSL}/${CONFIG}"
 
-# ln -s ${PATH_SSL}/ipsec/private/${CLIENT}.key /var/ipfire/private/${CLIENT}key.pem
-# ln -s ${PATH_SSL}/ipsec/${CLIENT}.pem /var/ipfire/certs/${CLIENT}cert.pem
-# ln -s ${PATH_SSL}/ipsec/${CLIENT}.p12 /var/ipfire/certs/
+fi
+openssl ca -name IPSEC -extensions ACCES -in ${PATH_SSL}/ipsec/${CLIENT}.req -out ${PATH_SSL}/ipsec/certs/${CLIENT}.pem -config ${PATH_SSL}/${CONFIG}
+if [[ "$v" == "1" ]]; then
+	echo "Portage du jeu de certificat vers un format p12."
+	echo "openssl pkcs12 -export -inkey ${PATH_SSL}/ipsec/private/${CLIENT}.key -in ${PATH_SSL}/ipsec/certs/${CLIENT}.pem -name "${CLIENT}.${CN}" -certfile ${PATH_SSL}/ipsec/certs/ca.pem -caname "${CN}" -out ${PATH_SSL}/ipsec/${CLIENT}.p12" 
 
-# FIN IPSEC_CA
-# echo $((`wc -l /var/ipfire/vpn/config | awk '{ print $1}'`+1)),off,windows,CN=windows.10.10.100.8 OU=Certificat Client IPSec,host,cert,,,,0.0.0.0/0,,,172.16.0.0/24,,,,,,,,,,,,,,,,,,,,>>/var/ipfire/vpn/config
-# ln -s /etc/ssl/ipsec_ca/private/windows_ipsec.key /var/ipfire/private/windowskey.pem
-# ln -s /etc/ssl/ipsec_ca/windows_ipsec.pem /var/ipfire/certs/windowscert.pem
-# ln -s /etc/ssl/ipsec_ca/windows.p12 /var/ipfire/certs/windows.p12
+fi
+openssl pkcs12 -export -inkey ${PATH_SSL}/ipsec/private/${CLIENT}.key -in ${PATH_SSL}/ipsec/certs/${CLIENT}.pem -name "${CLIENT}.${CN}" -certfile ${PATH_SSL}/ipsec/certs/ca.pem -caname "${CN}" -out ${PATH_SSL}/ipsec/${CLIENT}.p12 
+chmod 400 ${PATH_SSL}/ipsec/private/${CLIENT}.key
+chmod 444 ${PATH_SSL}/ipsec/certs/${CLIENT}.pem
 
-# echo $((`wc -l /var/ipfire/vpn/config | awk '{ print $1}'`+1)),off,${CLIENT},CN=${CLIENT}.${CN} OU=Certificat Acces IPSec,host,cert,,,,0.0.0.0/0,,,172.16.0.0/24,,,,,,,,,,,,,,,,,,,,>>/var/ipfire/vpn/config

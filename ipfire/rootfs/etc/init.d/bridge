@@ -6,7 +6,7 @@
 . /etc/sysconfig/rc
 . ${rc_functions}
 . /var/ipfire/ethernet/settings
-a_file=/root/ipfire/bridge
+a_file=/etc/default/bridge
 
 #
 case "${1}" in
@@ -15,26 +15,31 @@ case "${1}" in
 		do 
 			card=$(echo $line | cut -f1 -d=)
 			bool=$(echo $line | cut -f2 -d=)
+		
 			if [ $bool = "yes" ];then
+				adress=${card^^}_ADDRESS
+				mask=${card^^}_NETMASK
+				
 				boot_mesg "Create bridge for ${card}..."
-				# down green0
-				ifconfig ${card,,}0 0.0.0.0 &&		
-
-				ip link set ${card,,}0 down &&
-				# rename green0 to green1
-				ip link set ${card,,}0 name ${card,,}1 &&
+				# down ${card,,}0
+				echo "ifconfig "${card,,}"0 0.0.0.0"	
+				ifconfig ${card,,}0 0.0.0.0	
+				
+				ip link set ${card,,}0 
+				
+				# rename ${card,,}0 to ${card,,}1
+				ip link set ${card,,}0 name ${card,,}1
+				
 				# create new bridge green0
-				brctl addbr ${card,,}0 &&
-				# wait 2 seconds because udev try to rename the nics
-				# if the real green nic was added to fast...
-				adress=${card^^}"_ADDRESS" netmask ${card^^}"_NETMASK"&&
-				ifconfig ${card,,}0 ${!adress}&&	
-				brctl addif ${card,,}0 ${card,,}1 &&
-				ip link set ${card,,}1 up &&
+				brctl addbr ${card,,}0 
 
-				sleep 2
+				ifconfig ${card,,}0 ${!adress} netmask ${!mask}	
+				
+				brctl addif ${card,,}0 ${card,,}1
+				ip link set ${card,,}1 up 
 				evaluate_retval
-			fi
+
+				fi
 		done < ${a_file}
 	   ;;
 
@@ -44,24 +49,28 @@ case "${1}" in
 			card=$(echo $line | cut -f1 -d=)
 			bool=$(echo $line | cut -f2 -d=)
 			if [ ${bool,,} = "yes" ];then
+				adress=${card^^}_ADDRESS
+				mask=${card^^}_NETMASK
 				boot_mesg "Remove bridge for ${card,,}..."
 				
-				brctl delif ${card,,}0 ${card,,}1 &&
-				ifconfig ${card,,}0 0.0.0.0	&&			
+				brctl delif ${card,,}0 ${card,,}1 
+				ifconfig ${card,,}0 0.0.0.0	
 
-				# Bring nic's down
-				ip link set ${card,,}1 down &&
+				# Bring nic's down ${card,,}1
+				ip link set ${card,,}1 down 
 
-				# Bring bridge down
-				ip link set ${card,,}0 down &&
+				# Bring bridge down ${card,,}0
+				ip link set ${card,,}0 down 
 
-				# Delete Bridge
-				brctl delbr ${card,,}0 &&
+				# Delete Bridge ${card,,}0
+				brctl delbr ${card,,}0
 
-				# rename tap1 to orange0 
-				ip link set ${card,,}1 name ${card,,}0 &&
-				adress=${card^^}"_ADDRESS" &&
-				ifconfig ${card,,}0 ${!adress} 
+				# rename ${card,,}1 to ${card,,}0 
+				ip link set ${card,,}1 name ${card,,}0
+								
+				ip link set ${card,,}0 up 
+				ifconfig ${card,,}0 ${!adress} netmask ${!mask}
+
 				evaluate_retval
 				
 			fi

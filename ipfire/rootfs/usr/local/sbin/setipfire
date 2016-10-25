@@ -16,13 +16,6 @@ echo
 
 echo $((`wc -l /var/ipfire/vpn/config | awk '{ print $1}'`+1)),off,${CLIENT},CN=${CLIENT}.${CN} OU=Certificat Acces IPSec,host,cert,,,,0.0.0.0/0,,,172.16.0.0/24,,,,,,,,,,,,,,,,,,,,>>/var/ipfire/vpn/config
 
-
-
-
-
-
-
-
 cat <<EOF > /var/ipfire/vpn/settings 
 ENABLED=off
 ROOTCERT_OU=Secure Digital Certificate Signing
@@ -40,14 +33,14 @@ cat << EOF > /var/ipfire/vpn/caconfig
 EOF
 
 rm /var/ipfire/certs/hostcert.pem
-rm /var/ipfire/certs/hostkey.pem
+rm /var/ipfire/private/hostkey.pem
 rm /var/ipfire/ca/cacert.pem
 rm /var/ipfire/ca/ROOTCAcert.pem
 rm /var/ipfire/private/cakey.pem
 
 ln -s /etc/ssl/ipsec/ipfire.pem /var/ipfire/certs/hostcert.pem
-ln -s /etc/ssl/ipsec/private/ipfire.key /var/ipfire/certs/hostkey.pem
-ln -s /etc/ssl/ipsec/ca.pem /var/ipfire/cacert.pem
+ln -s /etc/ssl/ipsec/private/ipfire.key /var/ipfire/private/hostkey.pem
+ln -s /etc/ssl/ipsec/ca.pem /var/ipfire/ca/cacert.pem
 ln -s /etc/ssl/root/ca.pem /var/ipfire/ca/ROOTCAcert.pem
 ln -s /etc/ssl/ipseca/private/ca.key /var/ipfire/private/cakey.pem
 
