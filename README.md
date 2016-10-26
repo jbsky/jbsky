@@ -1,14 +1,8 @@
 # Repository jbsky
-
+My self helper.
 ## For debian
-<pre>  
-debian   _____ roots
-          |___ patch
-          |___ installer
-</pre>
+<pre>debian________ roots
+          |___ patch</pre>
 
 ## For ipfire
-<pre>       
-ipfire   _____ roots  
-          |___ patch  
-          |___ installer  </pre>
+<pre>ipfire________ roots</pre>
