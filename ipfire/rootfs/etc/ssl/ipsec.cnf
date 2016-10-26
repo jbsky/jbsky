@@ -1,7 +1,6 @@
 HOME                              = .
 RANDFILE                          = $ENV::HOME/.rnd
 
-
 [ca]
 default_ca                        = IPSEC                   # The default ca section
  
@@ -64,25 +63,25 @@ commonName                        = supplied
 emailAddress                      = optional
 
 [HOTE]
-nsComment                       = "Certificat Hote IPSec"
-subjectKeyIdentifier            = hash
-authorityKeyIdentifier          = keyid,issuer:always
-issuerAltName                   = issuer:copy
-subjectAltName                  = @alt_names
-basicConstraints                = critical,CA:FALSE
-keyUsage                        = digitalSignature, nonRepudiation, keyEncipherment
-nsCertType                      = server
-extendedKeyUsage                = serverAuth
+nsComment                         = "IPSec Secure Digital Certificate Hote"
+subjectKeyIdentifier              = hash
+authorityKeyIdentifier            = keyid,issuer:always
+issuerAltName                     = issuer:copy
+subjectAltName                    = @alt_names
+basicConstraints                  = critical,CA:FALSE
+keyUsage                          = digitalSignature, nonRepudiation, keyEncipherment
+nsCertType                        = server
+extendedKeyUsage                  = serverAuth
  
 [alt_names]
-DNS.1=172.16.254.1
+DNS.1                             = 172.16.254.1
 
 [ACCES]
-nsComment                       = "Certificat Access IPSec"
-subjectKeyIdentifier            = hash
-authorityKeyIdentifier          = keyid,issuer:always
-issuerAltName                   = issuer:copy
-basicConstraints                = critical,CA:FALSE
-keyUsage                        = digitalSignature, nonRepudiation, keyEncipherment
-nsCertType                      = server
-extendedKeyUsage                = clientAuth
+nsComment                         = "IPSec Secure Digital Certificate Access"
+subjectKeyIdentifier              = hash
+authorityKeyIdentifier            = keyid,issuer:always
+issuerAltName                     = issuer:copy
+basicConstraints                  = critical,CA:FALSE
+keyUsage                          = digitalSignature, nonRepudiation, keyEncipherment
+nsCertType                        = server
+extendedKeyUsage                  = clientAuth
