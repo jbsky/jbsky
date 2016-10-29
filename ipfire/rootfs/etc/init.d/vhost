@@ -64,6 +64,25 @@ start_host(){
 	# VNC access, usable with TightVNC
 	_VNC="-vnc ${GREEN}:${INDEX}"
 
+		_NET="-netdev type=tap,id=net0,ifname=${TAP},script=no,downscript=no,vhost=on -device virtio-net,netdev=net0,mac=${MAC_NET}"
+	
+	if test "${ISO}" == ""; then
+		_DISK="-drive file=${DISK},if=virtio"
+	else
+		_DISK="-drive file=${DISK},if=virtio -cdrom ${ISO}"
+	fi
+
+	if ! test -f ${DISK}; then
+		qemu-img create -f qcow2 ${DISK} ${SIZE}
+		_BOOT="-boot d"
+	else
+		if test "${BOOT}" == "d"; then
+			_BOOT="-boot d"
+		else
+			_BOOT="-boot c"
+		fi
+	fi
+
 	boot_mesg "New tapX for virtual host ${HOST}..."
 	ip tuntap add mode tap dev ${TAP}
 	
@@ -84,27 +103,6 @@ start_host(){
 	ip link set ${TAP} up
 	evaluate_retval 
 
-
-
-	_NET="-netdev type=tap,id=net0,ifname=${TAP},script=no,downscript=no,vhost=on -device virtio-net,netdev=net0,mac=${MAC_NET}"
-	
-	if test "${ISO}" == ""; then
-		_DISK="-drive file=${DISK},if=virtio"
-	else
-		_DISK="-drive file=${DISK},if=virtio -cdrom ${ISO}"
-	fi
-
-	if ! test -f ${DISK}; then
-		qemu-img create -f qcow2 ${DISK} ${SIZE}
-		_BOOT="-boot d"
-	else
-		if test "${BOOT}" == "d"; then
-			_BOOT="-boot d"
-		else
-			_BOOT="-boot c"
-		fi
-	fi
-
 	boot_mesg "Start virtual host ${HOST}..." 
 	qemu-system-i386 -enable-kvm -daemonize -cpu host \
 		${_KEYBOARD} \
@@ -115,10 +113,7 @@ start_host(){
 		${_NET} \
 		-monitor unix:${FILE_MONITOR},server,nowait,nodelay \
 		-pidfile ${PID_FILE}
-
 		evaluate_retval
-
-
 }
 stop(){
 	for f in $(find /etc/vhost/ -iname "*.vhost"); do
@@ -157,15 +152,13 @@ case "${1}" in
 		
 	;;
 	stop)
-                if ! test "${2}" == "" ; then
+		if ! test "${2}" == "" ; then
 			if test -f "/etc/vhost/${2}.vhost" ; then
-                                stop_host /etc/vhost/${2}.vhost
-                        fi
-                else
-                        stop
-                fi
-
-
+				stop_host /etc/vhost/${2}.vhost
+			fi
+		else
+			stop
+		fi
 	;;
 	status)
 		status
@@ -175,5 +168,5 @@ case "${1}" in
 		exit 1
 	;;
 esac
- 
+
 # End $rc_base/init.d/vhost_X

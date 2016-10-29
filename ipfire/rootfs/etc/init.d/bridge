@@ -1,4 +1,4 @@
-#!/bin/bash -x
+#!/bin/bash
 ########################################################################
 # Begin $rc_base/init.d/bridge
 #######################################################################
@@ -15,26 +15,22 @@ case "${1}" in
 		do 
 			card=$(echo $line | cut -f1 -d=)
 			bool=$(echo $line | cut -f2 -d=)
-		
+
 			if [ $bool = "yes" ];then
 				adress=${card^^}_ADDRESS
 				mask=${card^^}_NETMASK
-				
-				boot_mesg "Create bridge for ${card}..."
-				# down ${card,,}0
-				echo "ifconfig "${card,,}"0 0.0.0.0"	
-				ifconfig ${card,,}0 0.0.0.0	
-				
-				ip link set ${card,,}0 down
-				
-				# rename ${card,,}0 to ${card,,}1
-				ip link set ${card,,}0 name ${card,,}1
-				
-				# create new bridge green0
-				brctl addbr ${card,,}0 
 
-				ifconfig ${card,,}0 ${!adress} netmask ${!mask}	
+				boot_mesg "Create bridge for ${card}..."
+				ifconfig ${card,,}0 0.0.0.0
+
+				ip link set ${card,,}0 down						# down card
 				
+				ip link set ${card,,}0 name ${card,,}1			# change name card0 to card1
+				brctl addbr ${card,,}0
+
+
+				ifconfig ${card,,}0 ${!adress} netmask ${!mask}
+
 				brctl addif ${card,,}0 ${card,,}1
 				ip link set ${card,,}1 up 
 				evaluate_retval
@@ -85,4 +81,3 @@ case "${1}" in
 esac
 
 # End $rc_base/init.d/bridge
-	
