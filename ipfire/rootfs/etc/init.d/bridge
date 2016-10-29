@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash -x
 ########################################################################
 # Begin $rc_base/init.d/bridge
 #######################################################################
@@ -25,7 +25,7 @@ case "${1}" in
 				echo "ifconfig "${card,,}"0 0.0.0.0"	
 				ifconfig ${card,,}0 0.0.0.0	
 				
-				ip link set ${card,,}0 
+				ip link set ${card,,}0 down
 				
 				# rename ${card,,}0 to ${card,,}1
 				ip link set ${card,,}0 name ${card,,}1

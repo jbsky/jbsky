@@ -1,0 +1,5 @@
+BOOT=c
+RAM=512M
+KEYBOARD=fr # clavier FR
+SIZE=8G
+

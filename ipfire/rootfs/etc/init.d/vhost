@@ -1,145 +1,140 @@
-#/bin/bash -x
+#!/bin/bash
 ########################################################################
 # Name Script : vhost
 #
 # Description : script use to create a virtual host
 #
 ########################################################################
-# cat /root/ipfire/vhost/XXX.vhost
+# cat /etc/vhost/XXX.vhost
 # INDEX=1
-# RAM=384M
-# PATH_IMAGE=/mnt/sdb4/.qemu/www.vhost.img
+# RAM=
+# DISK=/home/qemu/example.img
 # BRIDGE=orange
 # TAP=tap${INDEX}
 # MAC_TAP="72:A3:C3:F7:6F:01"
 # MAC_NET="72:A3:C3:F7:6F:03"
-
+# ISO=/home/qemu/example.iso
+#
+# cat /etc/default/vhost
+# SIZE=8G
+# KEYBOARD=fr
+# BOOT=c
+# RAM=512M
 
 . /etc/sysconfig/rc
 . ${rc_functions}
-C_RED='\033[0;31m'
-C_GREEN='\033[0;32m'
-NC='\033[0m' # No Color
-KEYBOARD=fr # clavier FR
-GREEN=`ifconfig green0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
 
-#cdrom, iso for install
-# PATH_ISO=/home/qemu/debian-8.2.0-i386-netinst.iso
-# PATH_ISO=/home/qemu/Images/OS/Windows_fr_7_AIO_9_in_1.iso
 stop_host(){
-	. $(readlink -f $1);
-	a_File=$(readlink -f $1)
-	HOST=${a_File##*/}
+	. ${1}
+	HOST=${1##*/}
 	PID_FILE=/var/run/${HOST}.pid
 	FILE_MONITOR=/var/run/${HOST}
 
 	if [ -S ${FILE_MONITOR} ]; then		
-		boot_mesg "Stop virtual host ${HOST}..."
-		/root/perl/shutdown.pm ${HOST}  &&
-		sleep 15 &&
-		rm /var/run/${HOST}	 &&
+		boot_mesg "Send shutdown to virtual host ${HOST}..."
+		/usr/local/sbin/shutdown.pm ${HOST}
 		evaluate_retval 		
-	fi
-	if [ -f ${PID_FILE} ]; then		
-		boot_mesg "Stop virtual host ${HOST} on "`cat ${PID_FILE}`"..."
-		kill `cat ${PID_FILE}` &&
 		sleep 1
-		rm ${PID_FILE}
-
+		rm ${FILE_MONITOR}
 	fi
+	rm ${PID_FILE}
 
 	boot_mesg "Remove virtual host ${HOST} to ${BRIDGE} bridge..." 
 	# Bring bridge down
-	ip link set ${TAP} down &&
+	ip link set ${TAP} down 
 
-	brctl delif ${BRIDGE}0 ${TAP} &&
+	brctl delif ${BRIDGE}0 ${TAP}
 	evaluate_retval
 
 	boot_mesg "Remove tap for virtual host ${HOST}..." 
-	tunctl -d ${TAP} &&
+	tunctl -d ${TAP}
 	evaluate_retval
 
 }
 start_host(){
-
-	. $(readlink -f $1);
-	a_File=$(readlink -f $1)
-	HOST=${a_File##*/}
+	. /etc/default/vhost
+	. ${1}
+	HOST=${1##*/}
 	PID_FILE=/var/run/${HOST}.pid
 	FILE_MONITOR=/var/run/${HOST}
-	# VNC access, use with TightVNC
-	VNC="${GREEN}:${INDEX}"
+	GREEN=`ifconfig green0 | grep 'inet addr:' | cut -d: -f2 | awk '{ print $1}'`
+	_KEYBOARD="-k ${KEYBOARD}"
+	_RAM="-m ${RAM}"
 
-	boot_mesg "New tap for virtual host ${HOST}..."
+	# VNC access, usable with TightVNC
+	_VNC="-vnc ${GREEN}:${INDEX}"
+
+	boot_mesg "New tapX for virtual host ${HOST}..."
+	ip tuntap add mode tap dev ${TAP}
 	
-	ip tuntap add mode tap dev ${TAP} &&
-	# assign MAC address to BRIDGE/WEB/DNS/MAIL
-	ip link set ${TAP} address ${MAC_TAP} &&
-	# Change settings on tap1 to improve performance for virtio
-	ethtool --offload ${TAP} gso off tso off &&
+	# assign MAC address to tapX
+	ip link set ${TAP} address ${MAC_TAP}
+	
+	# Change settings on tapX to improve performance for virtio
+	ethtool --offload ${TAP} gso off tso off
 	evaluate_retval 
+	
 	sleep 1
 	boot_mesg "Add virtual host ${HOST} to ${BRIDGE} bridge..."
 
 	# Add real green nic
-	brctl addif ${BRIDGE}0 ${TAP} &&
+	brctl addif ${BRIDGE}0 ${TAP}
+
 	# Bring nic's up
-	ip link set ${TAP} up &&
+	ip link set ${TAP} up
 	evaluate_retval 
 
-	boot_mesg "Start virtual host ${HOST}..." 
-	NET="-netdev type=tap,id=net0,ifname=${TAP},script=no,downscript=no,vhost=on -device virtio-net,netdev=net0,mac=${MAC_NET}"
-	if ! test -f ${PATH_IMAGE}; then
-		qemu-img create -f qcow2 ${PATH_IMAGE} ${DISK}
-		qemu-system-i386 -k ${KEYBOARD} \
-			-enable-kvm \
-			-vnc ${VNC} \
-			-hda ${PATH_IMAGE} \
-			-m ${RAM} \
-			${NET} \
-			-daemonize \
-			-monitor unix:${FILE_MONITOR},server,nowait,nodelay \
-			-pidfile ${PID_FILE} \
-			-boot d -usbdevice tablet \
-			-cdrom ${PATH_ISO} &&
-			evaluate_retval
-	else
-		qemu-system-i386 -k ${KEYBOARD} \
-			-enable-kvm \
-			-vnc ${VNC} \
-			-cpu host \
-			-hda ${PATH_IMAGE} \
-			-m ${RAM} \
-			${NET} \
-			-daemonize \
-			-monitor unix:${FILE_MONITOR},server,nowait,nodelay \
-			-pidfile ${PID_FILE} \
-			-boot c -usbdevice tablet && # \
-		#	-cdrom ${PATH_ISO} &&
-			evaluate_retval
 
+
+	_NET="-netdev type=tap,id=net0,ifname=${TAP},script=no,downscript=no,vhost=on -device virtio-net,netdev=net0,mac=${MAC_NET}"
+	
+	if test "${ISO}" == ""; then
+		_DISK="-drive file=${DISK},if=virtio"
+	else
+		_DISK="-drive file=${DISK},if=virtio -cdrom ${ISO}"
 	fi
+
+	if ! test -f ${DISK}; then
+		qemu-img create -f qcow2 ${DISK} ${SIZE}
+		_BOOT="-boot d"
+	else
+		if test "${BOOT}" == "d"; then
+			_BOOT="-boot d"
+		else
+			_BOOT="-boot c"
+		fi
+	fi
+
+	boot_mesg "Start virtual host ${HOST}..." 
+	qemu-system-i386 -enable-kvm -daemonize -cpu host \
+		${_KEYBOARD} \
+		${_BOOT} \
+		${_DISK} \
+		${_VNC} \
+		${_RAM} \
+		${_NET} \
+		-monitor unix:${FILE_MONITOR},server,nowait,nodelay \
+		-pidfile ${PID_FILE}
+
+		evaluate_retval
+
+
 }
 stop(){
-	for f in $(find /root/ipfire/vhost/ -iname "*.vhost"); do
-		for g in $(find /root/ipfire/vhost/ -iname "${1}*.vhost"); do
-			if test "$g" = "$f";then
-				stop_host $f
-			fi
-		done
+	for f in $(find /etc/vhost/ -iname "*.vhost"); do
+		stop_host $f
 	done
 }
 start(){
-	for f in $(find /root/ipfire/vhost/ -iname "*.vhost"); do
-		for g in $(find /root/ipfire/vhost/ -iname "${1}*.vhost"); do
-			if test "$g" = "$f";then
-				start_host $f
-			fi
-		done
+	for f in $(find /etc/vhost/ -iname "*.vhost"); do
+		start_host $f
 	done
 }
 status(){
-	for f in $(find /root/ipfire/vhost/ -iname "${1}*.vhost"); do
+	C_RED='\033[0;31m'
+	C_GREEN='\033[0;32m'
+	NC='\033[0m' # No Color
+	for f in $(find /etc/vhost/ -iname "${1}*.vhost"); do
 		a_File=$(readlink -f $f)
 		HOST=${a_File##*/}
 		PID_FILE=/var/run/${HOST}.pid
@@ -152,14 +147,28 @@ status(){
 }
 case "${1}" in
 	start)
-		start ${2}
+		if ! test "${2}" == "" ; then
+			if test -f "/etc/vhost/${2}.vhost" ; then
+				start_host /etc/vhost/${2}.vhost
+			fi
+		else
+			start
+		fi
 		
 	;;
 	stop)
-		stop ${2}
+                if ! test "${2}" == "" ; then
+			if test -f "/etc/vhost/${2}.vhost" ; then
+                                stop_host /etc/vhost/${2}.vhost
+                        fi
+                else
+                        stop
+                fi
+
+
 	;;
 	status)
-		status ${2}
+		status
 	;;
 	*)
 		echo "Usage: ${0} {start|stop|status}"
