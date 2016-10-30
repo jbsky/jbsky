@@ -1,7 +1,4 @@
-#!/bin/bash
-########################################################################
-# Begin $rc_base/init.d/bridge
-#######################################################################
+#!/bin/sh
 
 . /etc/sysconfig/rc
 . ${rc_functions}
@@ -23,16 +20,18 @@ case "${1}" in
 				boot_mesg "Create bridge for ${card}..."
 				ifconfig ${card,,}0 0.0.0.0
 
-				ip link set ${card,,}0 down						# down card
-				
-				ip link set ${card,,}0 name ${card,,}1			# change name card0 to card1
-				brctl addbr ${card,,}0
+				ip link set ${card,,}0 down
 
+				ip link set ${card,,}0 name ${card,,}1
+
+				brctl addbr ${card,,}0
 
 				ifconfig ${card,,}0 ${!adress} netmask ${!mask}
 
 				brctl addif ${card,,}0 ${card,,}1
+
 				ip link set ${card,,}1 up 
+
 				evaluate_retval
 
 				fi
@@ -48,27 +47,23 @@ case "${1}" in
 				adress=${card^^}_ADDRESS
 				mask=${card^^}_NETMASK
 				boot_mesg "Remove bridge for ${card,,}..."
-				
+
 				brctl delif ${card,,}0 ${card,,}1 
+
 				ifconfig ${card,,}0 0.0.0.0	
 
-				# Bring nic's down ${card,,}1
 				ip link set ${card,,}1 down 
-
-				# Bring bridge down ${card,,}0
 				ip link set ${card,,}0 down 
 
-				# Delete Bridge ${card,,}0
 				brctl delbr ${card,,}0
 
-				# rename ${card,,}1 to ${card,,}0 
 				ip link set ${card,,}1 name ${card,,}0
-								
+
 				ip link set ${card,,}0 up 
+
 				ifconfig ${card,,}0 ${!adress} netmask ${!mask}
 
 				evaluate_retval
-				
 			fi
 
 		done < ${a_file}

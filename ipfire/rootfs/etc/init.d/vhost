@@ -1,6 +1,9 @@
-#!/bin/bash
+#!/bin/sh
 ########################################################################
 # Name Script : vhost
+#
+#
+#
 #
 # Description : script use to create a virtual host
 #
@@ -10,11 +13,11 @@
 # RAM=
 # DISK=/home/qemu/example.img
 # BRIDGE=orange
-# TAP=tap${INDEX}
 # MAC_TAP="72:A3:C3:F7:6F:01"
 # MAC_NET="72:A3:C3:F7:6F:03"
 # ISO=/home/qemu/example.iso
-#
+# BOOT=d to force iso start at boot
+
 # cat /etc/default/vhost
 # SIZE=8G
 # KEYBOARD=fr
@@ -33,23 +36,32 @@ stop_host(){
 	if [ -S ${FILE_MONITOR} ]; then		
 		boot_mesg "Send shutdown to virtual host ${HOST}..."
 		/usr/local/sbin/shutdown.pm ${HOST}
-		evaluate_retval 		
-		sleep 1
-		rm ${FILE_MONITOR}
+		evaluate_retval
+		sleep 15
 	fi
+
+	boot_mesg "Removing tap${INDEX} from ${BRIDGE} bridge..." 
+
+	ip link set tap${INDEX} down 
+
+	brctl delif ${BRIDGE} tap${INDEX}
+	evaluate_retval
+
+	boot_mesg "Destroying tap${INDEX} ..." 
+	COUNTER=10
+	tunctl -d tap${INDEX}
+	while [[ $? != 0   &&  ${COUNTER} > 0 ]];
+	do
+		sleep 5
+		COUNTER=$((${COUNTER}-1))
+		tunctl -d tap${INDEX}
+	done
+
 	rm ${PID_FILE}
+	rm ${FILE_MONITOR}
 
-	boot_mesg "Remove virtual host ${HOST} to ${BRIDGE} bridge..." 
-	# Bring bridge down
-	ip link set ${TAP} down 
-
-	brctl delif ${BRIDGE}0 ${TAP}
 	evaluate_retval
-
-	boot_mesg "Remove tap for virtual host ${HOST}..." 
-	tunctl -d ${TAP}
-	evaluate_retval
-
+	
 }
 start_host(){
 	. /etc/default/vhost
@@ -64,7 +76,7 @@ start_host(){
 	# VNC access, usable with TightVNC
 	_VNC="-vnc ${GREEN}:${INDEX}"
 
-		_NET="-netdev type=tap,id=net0,ifname=${TAP},script=no,downscript=no,vhost=on -device virtio-net,netdev=net0,mac=${MAC_NET}"
+		_NET="-netdev type=tap,id=net0,ifname=tap${INDEX},script=no,downscript=no,vhost=on -device virtio-net,netdev=net0,mac=${MAC_NET}"
 	
 	if test "${ISO}" == ""; then
 		_DISK="-drive file=${DISK},if=virtio"
@@ -76,35 +88,35 @@ start_host(){
 		qemu-img create -f qcow2 ${DISK} ${SIZE}
 		_BOOT="-boot d"
 	else
-		if test "${BOOT}" == "d"; then
-			_BOOT="-boot d"
+		if ! test "${BOOT}" == ""; then
+			_BOOT="-boot ${BOOT}"
 		else
 			_BOOT="-boot c"
 		fi
 	fi
 
-	boot_mesg "New tapX for virtual host ${HOST}..."
-	ip tuntap add mode tap dev ${TAP}
+	boot_mesg "Creating tap${INDEX} for virtual host ${HOST}..."
+	ip tuntap add mode tap dev tap${INDEX}
 	
 	# assign MAC address to tapX
-	ip link set ${TAP} address ${MAC_TAP}
+	ip link set tap${INDEX} address ${MAC_TAP}
 	
 	# Change settings on tapX to improve performance for virtio
-	ethtool --offload ${TAP} gso off tso off
+	ethtool --offload tap${INDEX} gso off tso off
 	evaluate_retval 
 	
 	sleep 1
-	boot_mesg "Add virtual host ${HOST} to ${BRIDGE} bridge..."
+	boot_mesg "Adding tap${INDEX} to ${BRIDGE} bridge..."
 
 	# Add real green nic
-	brctl addif ${BRIDGE}0 ${TAP}
+	brctl addif ${BRIDGE} tap${INDEX}
 
 	# Bring nic's up
-	ip link set ${TAP} up
+	ip link set tap${INDEX} up
 	evaluate_retval 
 
-	boot_mesg "Start virtual host ${HOST}..." 
-	qemu-system-i386 -enable-kvm -daemonize -cpu host \
+	boot_mesg "Starting virtual host ${HOST}..." 
+	qemu-system-x86_64 -enable-kvm -daemonize -cpu host \
 		${_KEYBOARD} \
 		${_BOOT} \
 		${_DISK} \
@@ -133,12 +145,12 @@ status(){
 		a_File=$(readlink -f $f)
 		HOST=${a_File##*/}
 		PID_FILE=/var/run/${HOST}.pid
-		FILE_MONITOR=/var/run/${HOST}
 		if [ -f ${PID_FILE} ]; then
-			echo  -e "${NC}"`echo $f | cut -d "/" -f5 | cut -d "." -f1`"${C_GREEN}\t" `cat ${PID_FILE}` "${NC}"
+			echo  -e "${NC}${HOST}${C_GREEN}\t" `cat ${PID_FILE}` "${NC}"
 		else
-			echo -e "${NC}"`echo $f | cut -d "/" -f5 | cut -d "." -f1`"${C_RED}\t not start${NC}"
-		fi	done
+			echo -e "${NC}${HOST}${C_RED}\t not start${NC}"
+		fi	
+	done
 }
 case "${1}" in
 	start)
@@ -168,5 +180,3 @@ case "${1}" in
 		exit 1
 	;;
 esac
-
-# End $rc_base/init.d/vhost_X

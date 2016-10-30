@@ -19,7 +19,7 @@ case "${1}" in
 		# assign MAC address to $INTERFACE
 		ip link set $INTERFACE address $MAC &&
 
-		
+
 		# Change settings on tap1 to improve performance for virtio
 		ethtool --offload $INTERFACE gso off tso off &&
 
