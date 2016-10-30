@@ -1,9 +1,8 @@
 # VNC access, use with TightVNC
 INDEX=1
 RAM=1536M
-DISK=/home/qemu/www.vhost.img
-BRIDGE=orange
-TAP=tap${INDEX}
+DISK=/home/qemu/SRV-MASTER.img
+BRIDGE=orange0
 MAC_TAP="72:A3:C3:F7:6F:01"
 MAC_NET="72:A3:C3:F7:6F:03"
 # ISO=/home/qemu/debian-8.2.0-i386-netinst.iso
