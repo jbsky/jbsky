@@ -1,0 +1,41 @@
+#!/bin/sh
+########################################################################
+# Begin $rc_base/init.d/wlan_green
+#
+# Description : Wireless client initscript
+#
+########################################################################
+
+. /etc/sysconfig/rc
+. ${rc_functions}
+
+case "${1}" in
+	start)
+			wpa_supplicant -B -i green0 -c /etc/wpa_supplicant.green0
+			echo $! > /var/run/wlan_green
+		;;
+
+	stop)
+		if [ test -f /var/run/wlan_green ]; then
+			kill `cat /var/run/wlan_green`
+			rm /var/run/wlan_green
+		fi
+		;;
+
+	restart)
+		${0} stop
+		sleep 1
+		${0} start
+		;;
+
+	status)
+		statusproc wpa_supplicant
+		;;
+
+	*)
+		echo "Usage: ${0} {start|stop|restart|status}"
+		exit 1
+		;;
+esac
+
+# End $rc_base/init.d/wlan_green
