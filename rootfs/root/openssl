@@ -10,6 +10,7 @@ wget https://raw.githubusercontent.com/jbsky/jbsky/master/ipfire/rootfs/usr/loca
 chmod +x {caroot,casec,secsrv,secacces}
 mv {caroot,casec,secsrv,secacces} /usr/local/sbin
 mv {openssl.cnf,ipsec.cnf} /etc/ssl/
+
 # 3/ On génère le certificat d'autorité racine.
 caroot
 
