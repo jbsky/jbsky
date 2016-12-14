@@ -56,11 +56,11 @@ stop_host(){
 		COUNTER=$((${COUNTER}-1))
 		tunctl -d tap${INDEX}
 	done
-        if [[ $? != 0 ]]; then
+	if [[ $? != 0 ]]; then
 		kill -9 ${PID_FILE}
-                sleep 1
-                tunctl -d tap${INDEX}
-        fi
+		sleep 1
+		tunctl -d tap${INDEX}
+	fi
 
 	rm ${PID_FILE}
 	rm ${FILE_MONITOR}
