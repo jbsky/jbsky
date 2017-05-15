@@ -1,0 +1,78 @@
+--- /root/deluged	2017-05-14 20:57:14.133077078 +0200
++++ /etc/init.d/deluged	2017-05-14 21:37:42.842859055 +0200
+@@ -24,6 +24,17 @@
+ PIDFILE=/var/run/$NAME.pid
+ SCRIPTNAME=/etc/init.d/$NAME
+ 
++
++###
++PORT=8112
++NAME_WEB="deluge-web"
++DAEMON_WEB=/usr/bin/deluge-web
++PIDFILE_WEB=/var/run/$NAME_WEB.pid
++PKGNAME=deluge-daemon
++
++###
++
++
+ # Exit if the package is not installed
+ [ -x "$DAEMON" ] || exit 0
+ 
+@@ -32,6 +43,8 @@
+ # Read configuration variable file if it is present
+ [ -r /etc/default/$NAME ] && . /etc/default/$NAME
+ 
++DAEMON_WEB_ARGS="-p ${PORT} -c /var/lib/deluged/config -l /var/log/deluged/deluge-web.log -L warning"
++
+ # Load the VERBOSE setting and other rcS variables
+ [ -f /etc/default/rcS ] && . /etc/default/rcS
+ 
+@@ -53,12 +66,23 @@
+     #   1 if daemon was already running
+     #   2 if daemon could not be started
+     start-stop-daemon --start --background --quiet --pidfile $PIDFILE --exec $DAEMON \
+-      --chuid $USER --umask $MASK --test > /dev/null \
+-      || return 1
++      --chuid $USER --umask $MASK --test > /dev/null
++    RETVAL="$?"
++
++    start-stop-daemon --start --background --quiet --pidfile $PIDFILE_WEB --exec $DAEMON_WEB \
++      --chuid $USER --user $USER --test > /dev/null
++    RETVAL_WEB="$?"
++   [ "$RETVAL" = "0" -a "$RETVAL_WEB" = "0" ] || return 1
+ 
+     start-stop-daemon --start --background --quiet --pidfile $PIDFILE --make-pidfile --exec $DAEMON \
+       --chuid $USER --umask $MASK -- $DAEMON_ARGS \
+-      || return 2
++   RETVAL="$?"
++        sleep 2
++
++   start-stop-daemon --start --background --quiet --pidfile $PIDFILE_WEB --make-pidfile --exec $DAEMON_WEB \
++      --chuid $USER --user $USER -- $DAEMON_WEB_ARGS
++   RETVAL_WEB="$?"
++   [ "$RETVAL" = "0" -a "$RETVAL_WEB" = "0" ] || return 2
+   fi
+ }
+ 
+@@ -73,12 +97,18 @@
+   #   2 if daemon could not be stopped
+   #   other if a failure occurred
+ 
++  start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --user $USER --pidfile $PIDFILE_WEB
++  RETVAL_WEB="$?"
++
+   start-stop-daemon --stop --quiet --retry=TERM/30/KILL/5 --pidfile $PIDFILE
+   RETVAL="$?"
+-  [ "$RETVAL" = "2" ] && return 2
+ 
+-  rm -f $PIDFILE
+-  return "$RETVAL"
++  [ "$RETVAL" = "2" -o "$RETVAL_WEB" = "2" ] && return 2
++
++  rm -f $PIDFILE $PIDFILE_WEB
++
++  [ "$RETVAL" = "0" -a "$RETVAL_WEB" = "0" ] && return 0 || return 1
++
+ }
+ 
+ case "$1" in
