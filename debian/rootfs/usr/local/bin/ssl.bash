@@ -150,9 +150,14 @@ CheckAndCreateTreeFolder(){
   #== renseigne le fichier /etc/default/ssl ==#
   #
 DoDefault(){
-	if [ ${flagOptVerbose} -eq 1 ];then
-		echo "DoDefault"
+	[ ${flagOptVerbose} -eq 1 ] && 	echo "DoDefault"
+	
+	if [[ "${OptAuthority}" == "" ]];then
+		RootAuthority="Root"
+	else
+		RootAuthority=${OptAuthority}
 	fi
+
 	if [ "${DefaultConfigFile}" == "" ];then
 		if [[ "${ConfigFolder}" == "" ]];then
 			ConfigFolder="/etc/ssl/"
@@ -161,7 +166,6 @@ DoDefault(){
 			ConfigFile="openssl.cnf"
 		fi
 		DefaultConfigFile=${ConfigFolder}${ConfigFile}
-
 	fi
 	read -p "Please enter the path to your default config files, '"${DefaultConfigFile}"' press [ENTER] to confirm : " NEW_PathConfigFile
 	if [[ "${NEW_PathConfigFile}" == "" ]];then
@@ -169,20 +173,7 @@ DoDefault(){
 	else
 		echo "DefaultConfigFile=${NEW_PathConfigFile}">/etc/default/ssl 
 	fi
-			
-	if [[ "${OptAuthority}" == "" ]];then
-		RootAuthority="Root"
-	else
-		RootAuthority=${OptAuthority}
-	fi
-	
-	read -p "Please enter the name for your RootAuthority, '"${RootAuthority}"' press [ENTER] to confirm : " NEW_RootAuthority
-	if [[ "${NEW_RootAuthority}" == "" ]];then
-		echo "RootAuthority=${RootAuthority}">>/etc/default/ssl 
-	else
-		echo "RootAuthority=${NEW_RootAuthority}">>/etc/default/ssl 
-	fi	
-	if [[ "${Bits}" == "" ]];then
+		if [[ "${Bits}" == "" ]];then
 		Bits=2048
 	fi
 	read -p  "Set the new number of Bits : '"${Bits}"' Bits press [ENTER] to confirm : " NEW_Bits
@@ -198,50 +189,25 @@ DoDefault(){
 	if [[ "${Organisation}" == "" ]];then
 		Organisation="Discover"
 	fi
-	read -p "Please enter the name for your organisation, '"${Organisation}"' press [ENTER] to confirm : " NEW_Organisation
-	if [[ "${NEW_Organisation}" == "" ]];then
-		echo "Organisation=${Organisation}">>/etc/default/ssl
-	else 
-		echo "Organisation=${NEW_Organisation}">>/etc/default/ssl
-	fi
-		
-	if [[ "${Country}" == "" ]];then
-		Country=FR
-	fi
-	read -p "Please enter the name for your country, '"${Country}"' press [ENTER] to confirm : " NEW_Country
-	if [[ "${NEW_Country}" == "" ]];then
-		echo "Country=${Country}">>/etc/default/ssl 
-	else 
-		echo "Country=${NEW_Country}">>/etc/default/ssl
-	fi
-		
 	if [[ "${Locality}" == "" ]];then
 		Locality=Montpellier
 	fi
-	read -p "Please enter the name for your locality, '"${Locality}"' press [ENTER] to confirm : " NEW_Locality
-	if [[ "${NEW_Locality}" == "" ]];then
-		echo "Locality=${Locality}">>/etc/default/ssl
-	else 
-		echo "Locality=${NEW_Locality}">>/etc/default/ssl
-	fi
-		
 	if [[ "${stateOrProvince}" == "" ]];then
 		stateOrProvince="Occitanie"
 	fi
-	read -p "Please enter the name for your stateOrProvince, '"${stateOrProvince}"' press [ENTER] to confirm : " NEW_stateOrProvince
-	if [[ "${NEW_stateOrProvince}" == "" ]];then
-		echo "stateOrProvince=${stateOrProvince}">>/etc/default/ssl 
-	else 
-		echo "stateOrProvince=${NEW_stateOrProvince}">>/etc/default/ssl
+		if [[ "${Country}" == "" ]];then
+		Country=FR
 	fi
+	for field in ${SSL_FLD[@]}
+	do
+		read -p "Please enter the name for your ${field}, '"${!field}"' press [ENTER] to confirm : " NEW_field
+		if [[ "${NEW_field}" == "" ]];then
+			echo "${field}=${!field}">>/etc/default/ssl 
+		else
+			echo "${field}=${NEW_field}">>/etc/default/ssl 
+		fi	
+	done
 	
-	read -p "Please enter your email address, '"${emailAddress}"' press [ENTER] to confirm : " NEW_emailAddress
-	if [[ "${NEW_emailAddress}" == "" ]];then
-		echo "emailAddress=${emailAddress}">>/etc/default/ssl 
-	else 
-		echo "emailAddress=${NEW_emailAddress}">>/etc/default/ssl
-	fi
-
 	[ ${flagOptRoot} -eq 0 ] && exit 0
 }
 
@@ -469,6 +435,8 @@ DoIntermediate(){
 		chmod 444 ${IntermediateConfigFolder}/certs/${ca}.pem
 
 		openssl x509 -serial -noout -in ${IntermediateConfigFolder}/certs/ca.pem | cut -d= -f2 > ${IntermediateConfigFolder}/serial
+		printf "%X\n" $((0x`cat ${IntermediateConfigFolder}/serial`+1))>${IntermediateConfigFolder}/serial
+
 	else
 		info "${IntermediateConfigFolder}/certs/${ca}.pem already exist, continu..." 1>&2
 	fi
@@ -478,14 +446,16 @@ DoCert(){
 
 	case "${1}" in
 	"client")
-		read -p "Name for a new client:" CommonName
+		while [ "${CommonName}" == "" ];do
+			read -p "Name for a new client:" CommonName
+		done
 		;;
 	"server")
 		while [ "${CommonName}" == "" ];do
 			read -p "FQND or IP (not blank) : " CommonName
 		done
 		sed -i -e 's/^DNS.1.*$/DNS.1                             = '${CommonName}'/g'  ${RootConfigFile}
-		read -p "IP :" CommonName2
+		read -p "FQND or IP :" CommonName2
 		sed -i -e 's/^DNS.2.*$/DNS.2                             = '${CommonName2}'/g'  ${RootConfigFile}
 		;;
 	esac
@@ -609,6 +579,15 @@ RootConfigFile=""						# ex: openssl.cnf
 RootConfigFolder="" 					# ex: /etc/ssl/Root
 RootAuthority=""						# ex: Root
 
+# typeset -A SSL_FLD
+SSL_FLD=(
+	RootAuthority
+	Organisation
+	Country
+	Locality
+	stateOrProvince
+	emailAddress
+)
 
 #============================
 #  PARSE OPTIONS WITH GETOPTS
@@ -632,6 +611,8 @@ ARRAY_OPTS=(
 	[intermediate]=i
 	[info]=j
 )
+
+  #== set list of ssl fields ==#
 
   #== parse options ==#
 while getopts ${SCRIPT_OPTS} OPTION ; do
@@ -708,6 +689,9 @@ shift $((${OPTIND} - 1)) ## shift options
 
   #== Check/Set arguments ==#
 [[ $# -gt 2 ]] && error "${SCRIPT_NAME}: Too many arguments" && usage 1>&2 && exit 5
+
+sumOpt=$((flagOptDefault+ flagOptServer+flagOptClient+flagOptRoot+flagOptIntermediate))
+[ ${sumOpt} -eq 0 ]&& usage 1>&2 && exit 1 ## print usage if option error and exit
 
 if [ $flagOptDefault -eq 1 -o ! -f /etc/default/ssl ];then
 	[ ${flagOptVerbose} -eq 1 ] && echo "flagOptDefault = 1"
