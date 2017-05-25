@@ -173,7 +173,7 @@ DoDefault(){
 	else
 		echo "DefaultConfigFile=${NEW_PathConfigFile}">/etc/default/ssl 
 	fi
-		if [[ "${Bits}" == "" ]];then
+	if [[ "${Bits}" == "" ]];then
 		Bits=2048
 	fi
 	read -p  "Set the new number of Bits : '"${Bits}"' Bits press [ENTER] to confirm : " NEW_Bits
@@ -701,10 +701,10 @@ if [ $flagOptDefault -eq 1 -o ! -f /etc/default/ssl ];then
 	fi
 	
 	DoDefault
-else
-	. /etc/default/ssl
 
 fi
+. /etc/default/ssl
+
 
 if [ ${flagOptPath} -eq 1 ];then
 	RootPath=${OptPath}
