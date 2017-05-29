@@ -1,0 +1,85 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          puppet
+# Required-Start:    $network $named $remote_fs $syslog
+# Required-Stop:     $network $named $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+### END INIT INFO
+
+
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+NAME=agent
+DEFAULT=/etc/default/puppet
+DAEMON=/opt/puppetlabs/puppet/bin/puppet
+DESC="puppet configuration management tool agent daemon"
+
+PIDFILE=/var/run/puppetlabs/agent.pid
+
+. /lib/lsb/init-functions
+
+
+test -x $DAEMON || exit 5
+
+if [ -r $DEFAULT ]; then
+        . $DEFAULT
+fi
+
+DAEMON_OPTS="agent $PUPPET_EXTRA_OPTS"
+
+test -x $DAEMON || exit 0
+
+[ -r /etc/default/puppetagent ] && . /etc/default/puppetmaster
+
+. /lib/lsb/init-functions
+
+if [ ! -d /var/run/puppet ]; then
+	mkdir -p /var/run/puppet
+fi
+
+# chown puppet:puppet /var/run/puppet
+
+start_puppetagent() {
+	start-stop-daemon --start  --quiet  --pidfile $PIDFILE \
+		--startas $DAEMON -- $DAEMON_OPTS --config=/etc/puppetlabs/puppet/puppet.conf
+}
+
+stop_puppetagent() {
+	start-stop-daemon --stop --quiet --oknodo --pidfile¨$PIDFILE
+}
+
+status_puppetagent() {
+	status_of_proc -p "$PIDFILE" "${DAEMON}" "${NAME}"
+}
+
+
+case "$1" in
+    start)
+	log_begin_msg "Starting $DESC"
+	start_puppetagent
+	log_end_msg $?
+	;;
+    stop)
+	log_begin_msg "Stopping $DESC"
+	stop_puppetagent
+	log_end_msg $?
+	;;
+    reload)
+  	# Do nothing, as Puppetmaster rechecks its config automatically
+        ;;
+    status)
+	    status_puppetagent
+        ;;
+    restart|force-reload)
+	log_begin_msg "Restarting $DESC"
+	stop_puppetagent
+	sleep 1
+	start_puppetagent
+	log_end_msg $?
+	;;
+    *)
+	echo "Usage: $0 {start|stop|status|restart|force-reload}" >&2
+	exit 1
+;;
+esac
