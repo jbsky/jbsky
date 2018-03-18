@@ -1,0 +1,29 @@
+#!/usr/bin/env python
+import time
+from sense_hat import SenseHat
+from datetime import datetime
+import mysql.connector
+import os
+from subprocess import Popen,PIPE,STDOUT,call
+
+sense = SenseHat()
+cnx = mysql.connector.connect(user='raspberry',database='Psychrometrique')
+cursor = cnx.cursor()
+
+red = (255, 0, 0)
+
+while True :
+        T = sense.get_temperature()
+        P = sense.get_pressure()
+        H = sense.get_humidity()
+        print 'Pression : %.0f Temperature : %.1f Hygrometrie : %.0f ' % (P,T,H)
+        add_sense = "INSERT INTO SENSE (TEMPERATURE,HYGROMETRIE,PRESSION) VALUES (" + str(T) + ", " + str(H) + ", " + str(P) + ");"
+        cursor.execute(add_sense)
+        cnx.commit()
+
+        message =  str(T) + "C"
+        sense.show_message( message, text_colour = red)
+        time.sleep(1)
+
+cursor.close()
+cnx.close()
