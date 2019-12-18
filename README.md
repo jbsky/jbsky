@@ -1,8 +1,3 @@
-# Repository jbsky
-My self helper.
-## For debian
-<pre>debian________ roots
-          |___ patch</pre>
+Storage support for the files of my website, jbsky.fr
 
-## For ipfire
-<pre>ipfire________ roots</pre>
+Thanks to Github for providing space for storing technical files (configuration, script, etc...).
