@@ -1,4 +1,8 @@
 #!/bin/bash -x
+#	bsky.fr\Note sur k8s
+#	https://raw.githubusercontent.com/jbsky/jbsky/master/script/k8s-lxc-install.sh
+#
+#	Modifier TARGET_USER et VERSION
 
 TARGET_USER=newbe
 VERSION="5:19.03.5~3-0~debian-buster"
