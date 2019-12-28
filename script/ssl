@@ -8,35 +8,13 @@
 #% DESCRIPTION
 #% Script helping to generate and manage SSL certificates.
 #%
-#% /!\Don't forget to put the following lines in openssl.
-#%
-#%
-#%[server]
-#%subjectKeyIdentifier              = hash
-#%authorityKeyIdentifier            = keyid,issuer:always
-#%issuerAltName                     = issuer:copy
-#%subjectAltName                    = @alt_names
-#%basicConstraints                  = critical,CA:FALSE
-#%keyUsage                          = digitalSignature, nonRepudiation, keyEnciphe$
-#%nsCertType                        = server
-#%extendedKeyUsage                  = serverAuth
-#%nsComment                         = "OpenSSL Generated Certificate"
-#%
-#%[client]
-#%subjectKeyIdentifier              = hash
-#%authorityKeyIdentifier            = keyid,issuer:always
-#%subjectAltName                    = email:copy
-#%issuerAltName                     = issuer:copy
-#%basicConstraints                  = critical,CA:FALSE
-#%keyUsage                          = digitalSignature, nonRepudiation, keyEnciphe$
-#%nsCertType                        = client, email, objsign
-#%extendedKeyUsage                  = clientAuth
-#%nsComment                         = "OpenSSL Generated Certificate"
+#% /!\Don't forget to put the following lines in /etc/default/openssl
 #%
 #% OPTIONS
 #%    -a                                                create authority
 #%    -m                                                show cert
 #%    -s                                                create cert server
+#%    -r                                                revoke cert
 #%    -c                                                create cert client
 #%    -h                                                print this help
 #%    -v                                                verbose
@@ -46,13 +24,13 @@
 #- IMPLEMENTATION
 #-    version         ${SCRIPT_NAME} 0.0.1
 #-    author        Jbsky
-#-    copyright     
+#-    copyright
 #-    license         GNU General Public License
 #-
 #================================================================
 #  HISTORY
 #     2016/03/01 : Script creation
-# 
+#
 #================================================================
 #  DEBUG OPTION
 # set -n  # Uncomment to check your syntax, without execution.
@@ -66,48 +44,17 @@
 #  FUNCTIONS
 #============================
 
-  #== fecho function ==#
-fecho() {
-  myType=${1} ; shift ;
-  [[ ${SCRIPT_TIMELOG_FLAG:-0} -ne 0 ]] && printf "$( date ${SCRIPT_TIMELOG_FORMAT} )"
-  printf "[${myType%[A-Z][A-Z]}] ${*}\n"
-  if [[ "${myType}" = CAT ]]; then
-    if [[ ${SCRIPT_TIMELOG_FLAG:-0} -eq 0 ]]; then
-        cat -un - | awk '$0="[O] "$0; fflush();' ;
-    elif [[ "${GNU_AWK_FLAG}" ]]; then # fast - compatible linux
-        cat -un - | awk -v tformat=${SCRIPT_TIMELOG_FORMAT#+} '$0=strftime(tformat)"[O] "$0; fflush();' ; 
-    else # average speed and more resource intensive- compatible unix/linux
-        cat -un - | while read LINE; do \
-            [[ ${OLDSECONDS:=$(( ${SECONDS}-1 ))} -lt ${SECONDS} ]] && OLDSECONDS=$(( ${SECONDS}+1 )) \
-            && TSTAMP="$( date ${SCRIPT_TIMELOG_FORMAT} )"; printf "${TSTAMP}[O] ${LINE}\n"; \
-        done 
-    fi
-  fi
-}
-
-  #== custom function ==#
-check_cre_file() {
-    myFile=${1}
-    [[ "${myFile}" = "/dev/null" ]] && return 0
-    [[ -e ${myFile} ]] && error "${SCRIPT_NAME}: ${myFile}: File already exists" && return 1
-    touch ${myFile} 2>&1 1>/dev/null
-    [[ $? -ne 0 ]] && error "${SCRIPT_NAME}: ${myFile}: Cannot create file" && return 2
-    rm -f ${myFile} 2>&1 1>/dev/null
-    [[ $? -ne 0 ]] && error "${SCRIPT_NAME}: ${myFile}: Cannot delete file" && return 3
-    return 0
-}
-
 CheckAndCreateFolder(){
 
     if [ ! -d ${1} ];then
         mkdir -p ${1} 
     else
-        info "${SCRIPT_NAME}: Config folder created ${1}" 1>&2 
-    fi    
+        echo "${SCRIPT_NAME}: Config folder created ${1}" 1>&2
+    fi
 }
 
 CheckAndCreateTreeFolder(){
-    [ -d  ${1} ] && info "${SCRIPT_NAME}: Folder ${1} already exit " 1>&2
+    [ -d  ${1} ] && echo "${SCRIPT_NAME}: Folder ${1} already exit " 1>&2
 
     CheckAndCreateFolder ${1}/certs
     CheckAndCreateFolder ${1}/crl
@@ -117,12 +64,12 @@ CheckAndCreateTreeFolder(){
     if [ ! -f ${1}/index.txt ];then
         touch ${1}/index.txt
     else
-        info "${SCRIPT_NAME}: ${1}/index.txt already exit " 1>&2
+        echo "${SCRIPT_NAME}: ${1}/index.txt already exit " 1>&2
     fi
     if [ ! -f ${1}/serial ];then
         touch ${1}/serial
     else
-        info "${SCRIPT_NAME}: ${1}/serial already exit " 1>&2
+        echo "${SCRIPT_NAME}: ${1}/serial already exit " 1>&2
     fi
 }
 
@@ -135,62 +82,17 @@ DoDefault(){
 email=webmaster@jbsky.fr
 bits=8192
 days=365
-O=Jbsky
-L=Senas
-ST=PACA
+O=myOrg
+L=
+ST=
 C=FR
 OU=
-oscp=ocsp.jbsky.fr
+oscp=
 configfile=/etc/ssl/openssl.cnf
-ca=CA_default
-dir=/etc/ssl/jbsky
+dir=/etc/ssl/${O,,}
+KEYFILE=/root/ca.key
 EOF
 
-}
-
-extract_FileAndFolderConfig(){
-    if [ ${flagOptVerbose} -eq 1 ];then
-        echo "extract_FileAndFolderConfig"
-    fi
-    # Test du repertoire
-    if [ -d "${1}" -o "${1:${#1}-1:1}" = '/' -o ! "${1:${#1}-4:4}" = '.cnf' ]; then
-        ConfigFolder=${1}
-        CheckAndCreateFolder ${1}
-    
-    else
-        if [ ${1:${#1}-5:5} = '/.cnf' ];then
-            error "${SCRIPT_NAME}: ${1} /.cnf not correct  naming format ConfigFile! " 1>&2 && exit 4 ## print usage if option error and exit
-        fi
-        ConfigFolder=`dirname ${1}`
-        ConfigFile=`basename ${1}`
-    fi
-    if [  "${ConfigFolder:${#ConfigFolder}-1:1}" = '/' ]; then
-        ConfigFolder="${ConfigFolder:0:${#ConfigFolder}-1}"
-    fi
-
-    if [ "${ConfigFile}" = "" ];then
-        ConfigFile="openssl.cnf"
-    fi
-    if [ ${flagOptVerbose} -eq 1 ];then
-    echo "************************************
-    ConfigFolder  : $ConfigFolder  
-    ConfigFile    : $ConfigFile
-    ************************************"
-    fi
-}
-
-DoPrivateKey(){
-    local OPTION
-    OPTION=""
-    if [ "${1}" = "ca" ];then
-        OPTION="-des3"
-    fi
-    if [ -f ${2}/private/${1}.key ];then
-        info "${2}/private/ca.key already exist, continu..." 1>&2
-    else
-        openssl genrsa ${OPTION} -out ${2}/private/${1}.key ${Bits} -config ${3}
-    fi
-    
 }
 
 
@@ -202,7 +104,7 @@ CreerAutorite(){
     echo "Dans la partie [CA_default] du fichier /etc/ssl/openssl.cnf, on vérifie que le repertoire dir correspond à la variable dans /etc/default/ssl"
     read p
     if [ ! -f  ${dir}/cacert.pem ];then
-    
+
         CheckAndCreateTreeFolder ${dir}
 
         [ "${C}" = "" ] ||subj="/C=${C}"
@@ -211,7 +113,7 @@ CreerAutorite(){
         [ "${O}" = "" ] ||subj="${subj}/O=${O}"
         [ "${OU}" = "" ]||subj="${subj}/OU=${OU}"
         subj="${subj}/CN=Secure Digital Certificate Signing"
-        
+
         openssl req -x509 -newkey rsa:${bits} -sha512 -extensions v3_ca -days ${days} -config ${configfile} -subj "${subj}" -keyout ${dir}/private/cakey.pem -out ${dir}/cacert.pem 
 
         chmod 400 ${dir}/private/cakey.pem
@@ -219,8 +121,36 @@ CreerAutorite(){
         openssl x509 -serial -noout -in ${dir}/cacert.pem | cut -d= -f2 > ${dir}/serial
         printf "%X\n" $((0x`cat ${dir}/serial`+1))>${dir}/serial
     else
-        info "${dir}/cacert.pem already exist, continu..." 1>&2
+        echo "${dir}/cacert.pem already exist, continu..." 1>&2
     fi
+}
+
+RevokeCertificat(){
+echo dir: $dir
+openssl ca -revoke ${dir}/certs/${OptRevokeCert}.pem -name tmp_ca -passin file:${KEYFILE}  -config <(cat ${configfile} <(printf "
+
+[tmp_ca]
+dir             = $dir
+certs           = \$dir/certs
+crl_dir         = \$dir/crl
+database        = \$dir/index.txt
+new_certs_dir   = \$dir/newcerts
+certificate     = \$dir/cacert.pem
+serial          = \$dir/serial
+crlnumber       = \$dir/crlnumber
+crl             = \$dir/crl.pem
+private_key     = \$dir/private/cakey.pem
+RANDFILE        = \$dir/private/.rand
+x509_extensions = usr_cert
+name_opt        = ca_default
+cert_opt        = ca_default
+default_days    = 365
+default_crl_days= 30
+default_md      = default               # use public key default MD
+preserve        = no                    # keep passed DN ordering
+policy          = policy_match"))
+mv ${dir}/certs/${OptRevokeCert}.pem  ${dir}/certs/${OptRevokeCert}.pem.${DATE}.drop
+mv ${dir}/private/${OptRevokeCert}.key  ${dir}/private/${OptRevokeCert}.key.${DATE}.drop
 }
 
 CreerCertificat(){
@@ -232,6 +162,27 @@ CreerCertificat(){
     [ "${O}" = "" ] ||subj="${subj}/O=${O}"
     [ "${OU}" = "" ]||subj="${subj}/OU=${OU}"
     [ "${emailAddress}" = "" ]||subj="${subj}/emailAddress=${emailAddress}"
+    if [ "${OptCN}" != "" ]; then
+        OLDIFS=$IFS
+        IFS=';'
+
+        read -ra field <<< $OptCN
+        for CommonName in "${field[@]}";
+        do
+            if [[ "${firstCN}" == ""  ]];then
+            # alt_names="DNS.${index}:${CommonName}"
+                firstCN=${CommonName}
+                index=$((${index}+1))
+                alt_names="DNS.${index}=${CommonName}"
+            else
+                index=$((${index}+1))
+                alt_names="${alt_names}\nDNS.${index}=${CommonName}"
+            fi
+        done
+        IFS=$OLDIFS
+        CommonName=""
+    fi
+
     while [ "${CommonName}" != "" ];do
         read -p "CN ${index}:" CommonName
         if [[ "${CommonName}" != "" && "${firstCN}" == ""  ]];then
@@ -247,20 +198,23 @@ CreerCertificat(){
         fi
     done
     subj="${subj}/CN=${firstCN}"
-    echo -e ${alt_names} 
-    
+    # echo -e ${alt_names}
+    firstCN=${firstCN/\*/\\\*}
+
     [ ${flagOptVerbose} -eq 1 ]&& echo "CreerCertificat"
-    
+
     if [ -f ${dir}/private/${firstCN}.key ];then
-        info "${dir}/private/${firstCN}.key already exist, continu..." 1>&2
+        echo "${dir}/private/${firstCN}.key already exist, continu..." 1>&2
     else
 #    -des3
-        openssl genrsa  -out ${dir}/private/${firstCN}.key ${bits} -config ${configfile}
+        openssl genrsa  -out ${dir}/private/${firstCN}.key ${bits}
     fi
-    
+
     if [ ! -f ${dir}/certs/${firstCN}.pem ];then
 
         if [ "${flagOptClient}" = "1" ];then
+            [ ${flagOptVerbose} -eq 1 ] && echo "openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config ${configfile}"
+
             openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config  <(cat ${configfile} <(printf "
 [client]
 subjectKeyIdentifier              = hash
@@ -273,8 +227,31 @@ nsCertType                        = client, email, objsign
 extendedKeyUsage                  = clientAuth
 nsComment                         = \"OpenSSL Generated Certificate\"
 "))
+            [ ${flagOptVerbose} -eq 1 ] && echo " openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions client -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem -config ${configfile}"
 
-            openssl ca -name ${ca} -extensions client -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem -config <(cat ${configfile} <(printf "
+            openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions client -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem -config <(cat ${configfile} <(printf "
+
+[tmp_ca]
+dir             = $dir
+certs           = \$dir/certs
+crl_dir         = \$dir/crl
+database        = \$dir/index.txt
+new_certs_dir   = \$dir/newcerts
+certificate     = \$dir/cacert.pem
+serial          = \$dir/serial
+crlnumber       = \$dir/crlnumber
+crl             = \$dir/crl.pem
+private_key     = \$dir/private/cakey.pem
+RANDFILE        = \$dir/private/.rand
+x509_extensions = usr_cert
+name_opt        = ca_default
+cert_opt        = ca_default
+default_days    = 365
+default_crl_days= 30
+default_md      = default               # use public key default MD
+preserve        = no                    # keep passed DN ordering
+policy          = policy_match
+
 [client]
 subjectKeyIdentifier              = hash
 authorityKeyIdentifier            = keyid,issuer:always
@@ -286,11 +263,16 @@ nsCertType                        = client, email, objsign
 extendedKeyUsage                  = clientAuth
 nsComment                         = \"OpenSSL Generated Certificate\"
 "))
-           
-            openssl pkcs12 -export -inkey ${dir}/private/${firstCN}.key -in ${dir}/certs/${firstCN}.pem -name "${firstCN}" -certfile ${dir}/cacert.pem -caname "${ca}" -out ${dir}/${firstCN}.p12
+
+            RANDPASS=$(date | md5sum |  cut -c1-8)
+
+            openssl pkcs12 -export -password pass:$RANDPASS -inkey ${dir}/private/${firstCN}.key -in ${dir}/certs/${firstCN}.pem -name "${firstCN}" -certfile ${dir}/cacert.pem -caname "${ca}" -out ${dir}/${firstCN}.p12
+            echo "password : $RANDPASS"
+            echo $RANDPASS >  ${dir}/${firstCN}.passwd
         fi
         if [ "${flagOptServeur}" = "1" ];then
-                    openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config  <(cat ${configfile} <(printf "\n[alt_names]\n${alt_names}\n[server]
+            [ ${flagOptVerbose} -eq 1 ] && echo "openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config  ${ConfigFile}"
+            openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config  <(cat ${configfile} <(printf "\n[alt_names]\n${alt_names}\n[server]
 subjectKeyIdentifier              = hash
 authorityKeyIdentifier            = keyid,issuer:always
 issuerAltName                     = issuer:copy
@@ -301,8 +283,31 @@ nsCertType                        = server
 extendedKeyUsage                  = serverAuth
 nsComment                         = \"OpenSSL Generated Certificate\"
 "))
+            [ ${flagOptVerbose} -eq 1 ] && echo "openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions server -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem  -config  ${ConfigFile}"
+            openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions server -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem  -config  <(cat ${configfile} <(printf "\n[alt_names]\n${alt_names}\n
+[tmp_ca]
+dir             = $dir
+certs           = \$dir/certs
+crl_dir         = \$dir/crl
+database        = \$dir/index.txt
+new_certs_dir   = \$dir/newcerts
+certificate     = \$dir/cacert.pem
+serial          = \$dir/serial
+crlnumber       = \$dir/crlnumber
+crl             = \$dir/crl.pem
+private_key     = \$dir/private/cakey.pem
+RANDFILE        = \$dir/private/.rand
+x509_extensions = usr_cert
+name_opt        = ca_default
+cert_opt        = ca_default
+default_days    = 365
+default_crl_days= 30
+default_md      = default               # use public key default MD
+preserve        = no                    # keep passed DN ordering
+policy          = policy_match
 
-            openssl ca -name ${ca} -extensions server -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem  -config  <(cat ${configfile} <(printf "\n[alt_names]\n${alt_names}\n[server]
+
+[server]
 subjectKeyIdentifier              = hash
 authorityKeyIdentifier            = keyid,issuer:always
 issuerAltName                     = issuer:copy
@@ -318,37 +323,15 @@ nsComment                         = \"OpenSSL Generated Certificate\"
         chmod 400 ${dir}/private/${firstCN}.key
         chmod 444 ${dir}/certs/${firstCN}.pem
     else
-        info "${dir}/certs/${firstCN}.pem already exist, continu..." 1>&2
+        echo "${dir}/certs/${firstCN}.pem already exist, continu..." 1>&2
     fi
 }
 
 #============================
-#  ALIAS AND FUNCTIONS
+#  FUNCTIONS
 #============================
 
-  #== error management function ==#
-info() { fecho INF "${*}"; }
-warning() { fecho WRN "WARNING: ${*}" 1>&2; countWrn=$(( ${countWrn} + 1 )); }
-error() {     if [ ${flagOptVerbose} -eq 1 ];then
-        checkdebug
-    fi;fecho ERR "ERROR: ${*}" 1>&2; countErr=$(( ${countErr} + 1 )); }
-cleanup() { [[ -e "${fileRC}" ]] && rm ${fileRC}; [[ -e "${fileLock}" ]] && [[ "$( head -1 ${fileLock} )" = "${EXEC_ID}" ]] && rm ${fileLock}; }
-scriptfinish() { [[ $rc -eq 0 ]] && endType="INF" || endType="ERR";
-    fecho ${endType} "${SCRIPT_NAME} finished at $(date "+%HH%M") (Time=${SECONDS}s, Error=${countErr}, Warning=${countWrn}, RC=$rc).";
-    exit $rc ; }
-checkdebug(){
-echo "************************************************
- DefaultConfigFile : ${DefaultConfigFile}
- ConfigFile : ${ConfigFile}
- ConfigFolder : ${ConfigFolder}
- RootAuthority : ${RootAuthority}
- RootConfigFolder : ${RootConfigFolder}
- RootConfigFile : ${RootConfigFile}
- IntermediateAuthority : ${IntermediateAuthority}
- IntermediateConfigFolder : ${IntermediateConfigFolder}
- IntermediateConfigFile : ${IntermediateConfigFile}
- *******************************************************";}
-  #== usage function ==#
+#== usage function ==#
 usage() {
     . /etc/default/ssl;
     printf "Usage: ";
@@ -361,11 +344,6 @@ usagefull() {
     head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#[%+-]" | sed -e "s/^#[%+-]//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g" | sed -e "s#\${DefaultConfigFile}#${DefaultConfigFile}#g";
 }
 scriptinfo() { head -${SCRIPT_HEADSIZE:-99} ${0} | grep -e "^#-" | sed -e "s/^#-//g" -e "s/\${SCRIPT_NAME}/${SCRIPT_NAME}/g"; }
-
-  #== inter program return code function ==#
-rc_save() { rc=$? && echo $rc > ${fileRC} ; }
-rc_restore() { [[ -r "${fileRC}" ]] && rc=$(cat ${fileRC}) ; }
-rc_assert() { [[ $rc -ne 0 ]] && error "${*} (RC=$rc)"; }
 
 
 #============================
@@ -385,17 +363,10 @@ SCRIPT_TIMELOG_FORMAT="+%y/%m/%d@%H:%M:%S"
 
 HOSTNAME="$(hostname)"
 FULL_COMMAND="${0} $*"
+DATE=$(date +"%Y%m%d")
 EXEC_DATE=$(date "+%y%m%d%H%M%S")
 EXEC_ID=${$}
-GNU_AWK_FLAG="$(awk --version 2>/dev/null | head -1 | grep GNU)"
 
-fileRC="${SCRIPT_DIR_TEMP}/${SCRIPT_UNIQ}.tmp.rc";
-fileLock="${SCRIPT_DIR_TEMP}/${SCRIPT_NAME%.*}.${SCRIPT_ID}.lock"
-fileLog="/dev/null"
-rc=0;
-
-countErr=0;
-countWrn=0;
 
   #== option variables ==#
 flagOptErr=0
@@ -412,15 +383,16 @@ flagOptIntermediate=0
 flagOptPath=0
 
   #== options par d‚faut du script ==#
-DefaultConfigFile=""                        # label pour une sous certification … racine root
+flagOptMenu=1;
+DefaultConfigFile=""                     # label pour une sous certification … racine root
 PathIntermediateConfigFile=""            # label pour une sous certification … racine root
-IntermediateConfigFolder=""                # designe le r‚pertoire des certificat: $ConfigFolder/$IntermediateConfigFile
-ConfigPathIConfigFile=""                # designe le r‚pertoire des certificat: $ConfigFolder/$IntermediateConfigFile
+IntermediateConfigFolder=""              # designe le r‚pertoire des certificat: $ConfigFolder/$IntermediateConfigFile
+ConfigPathIConfigFile=""                 # designe le r‚pertoire des certificat: $ConfigFolder/$IntermediateConfigFile
 ConfigFile=""                            # default: openssl.cnf
-ConfigFolder=""                         # default: /etc/ssl/
+ConfigFolder=""                          # default: /etc/ssl/
 RootConfigFile=""                        # ex: openssl.cnf
-RootConfigFolder=""                     # ex: /etc/ssl/Root
-RootAuthority=""                        # ex: Root
+RootConfigFolder=""                      # ex: /etc/ssl/Root
+RootAuthority=""                         # ex: Root
 
 # typeset -A SSL_FLD
 SSL_FLD=(
@@ -439,7 +411,7 @@ SSL_FLD=(
 #============================
 
   #== set short options ==#
-SCRIPT_OPTS='hvdscrap:i:-:m:'
+SCRIPT_OPTS='hvsr:ca:i:-:m:'
 
   #== set long options associated with short one ==#
 typeset -A ARRAY_OPTS
@@ -447,15 +419,13 @@ ARRAY_OPTS=(
     [help]=h
     [montre]=m
     [verbose]=v
-    [default]=d
-    [server]=s   
+    [revoke]=r
+    [server]=s
     [client]=c
     [authority]=a
     [intermediate]=i
     [info]=j
 )
-
-  #== set list of ssl fields ==#
 
   #== parse options ==#
 while getopts ${SCRIPT_OPTS} OPTION ; do
@@ -467,7 +437,7 @@ while getopts ${SCRIPT_OPTS} OPTION ; do
         [[ $LONG_OPTIND -ne -1 ]] && eval LONG_OPTARG="\$$LONG_OPTIND"
         OPTION=${ARRAY_OPTS[$LONG_OPTION]}
         [[ "x$OPTION" = "x" ]] &&  OPTION="?" OPTARG="-$LONG_OPTION"
-       
+
         if [[ $( echo "${SCRIPT_OPTS}" | grep -c "${OPTION}:" ) -eq 1 ]]; then
             if [[ "x${LONG_OPTARG}" = "x" ]] || [[ "${LONG_OPTARG}" = -* ]]; then
                 OPTION=":" OPTARG="-$LONG_OPTION"
@@ -487,33 +457,51 @@ while getopts ${SCRIPT_OPTS} OPTION ; do
         OPTARG="$OPTION" OPTION=":"
     fi
     #== manage options ==#
+getopts_get_optional_argument() {
+  eval next_token=\${$OPTIND}
+  if [[ -n $next_token && $next_token != -* ]]; then
+    OPTIND=$((OPTIND + 1))
+    OPTARG=$next_token
+  else
+    OPTARG=""
+  fi
+}
     case "$OPTION" in
-        a ) flagOptAutorite=1;;
-           
-        i )    flagOptIntermediate=1
-            OptIntermediatePath="${OPTARG}"
-        ;;
-       
-        s )    flagOptServeur=1;;
-       
-        c ) flagOptClient=1;;
+        a ) flagOptMenu=0;flagOptAutorite=1;;
 
-        m)  flagOptMontre=1
-             OptCert="${OPTARG}";;
-       
+        r ) flagOptMenu=0;flagOptRevoke=1;OptRevokeCert="${OPTARG}";;
+
+
+        i ) flagOptMenu=0;flagOptIntermediate=1
+            OptIntermediatePath="${OPTARG}";;
+
+        s ) flagOptMenu=0;
+        getopts_get_optional_argument $@
+        OptCN="${OPTARG}";
+        flagOptServeur=1;;
+
+        c ) flagOptMenu=0;
+        getopts_get_optional_argument $@
+        OptCN=${OPTARG}
+        echo $OptCN
+        flagOptClient=1;;
+
+        m)  flagOptMenu=0;flagOptMontre=1
+            OptCert="${OPTARG}";;
+
         h ) usagefull
             exit 0;;
 
         j ) scriptinfo
             exit 0;;
-       
+
         v ) flagOptVerbose=1
             set -x;;
-       
-        : ) error "${SCRIPT_NAME}: -$OPTARG: option requires an argument"
+
+        : ) echo "${SCRIPT_NAME}: -$OPTARG: option requires an argument"
             flagOptErr=1 ;;
 
-        ? ) error "${SCRIPT_NAME}: -$OPTARG: unknown option"
+        ? ) echo "${SCRIPT_NAME}: -$OPTARG: unknown option"
             flagOptErr=1 ;;
     esac
 done
@@ -522,10 +510,12 @@ shift $((${OPTIND} - 1)) ## shift options
 #============================
 #  MAIN SCRIPT
 #============================
+if [ $flagOptMenu -eq 1 ];then
+    usagefull
+    exit 0
+fi
+if [ ! -f /etc/default/ssl ];then
 
-if [ $flagOptDefault -eq 1 -o ! -f /etc/default/ssl ];then
-    [ ${flagOptVerbose} -eq 1 ] && echo "flagOptDefault = 1"
-   
     DoDefault
 fi
 
@@ -536,12 +526,18 @@ if [ "${flagOptAutorite}" = "1" ];then
 fi
 
 if [ "${flagOptClient}" = "1" ];then
-    CreerCertificat
+    [[ -r $KEYFILE ]] && CreerCertificat
+    [[ -r $KEYFILE ]] || echo $KEYFILE not readable 1>&2 && exit 1;
 fi
 if [ "${flagOptServeur}" = "1" ];then
-    CreerCertificat
+    [[ -r $KEYFILE ]] && CreerCertificat
+    [[ -r $KEYFILE ]] || echo $KEYFILE not readable 1>&2 && exit 1;
+fi
+if [ "${flagOptRevoke}" = "1" ];then
+    [[ -r $KEYFILE ]] && RevokeCertificat
+    [[ -r $KEYFILE ]] || echo $KEYFILE not readable 1>&2 && exit 1;
 fi
 if [ "${flagOptMontre}" = "1" ];then
-    openssl x509 -in ${OptCert} -noout -text
+    openssl x509 -in ${dir}/certs/${OptCert}.pem -noout -text
 fi
 
