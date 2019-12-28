@@ -70,14 +70,32 @@ apt-get install -y kubelet kubeadm kubectl
 apt-mark hold kubelet kubeadm kubectl
 
 
-cat > /usr/local/bin/kmsg << EOF
-#!/bin/bash
-ln -s /dev/console /dev/kmsg
+cat > /etc/init.d/kmsg << EOF
+#!/bin/sh
+########################################################################
+# Begin /etc/init.d/kmsg
+#######################################################################
+case "\${1}" in
+   start)
+      ln -s /dev/console /dev/kmsg
+      ;;
+
+   stop)
+      rm /dev/kmsg
+      ;;
+   *)
+      echo "Usage: \${0} {start|stop}"
+      exit 1
+      ;;
+esac
 EOF
 chmod +x /usr/local/bin/kmsg
 cat > /etc/systemd/system/kmsg.service << EOF
 [Service]
-ExecStart=/usr/local/bin/kmsg
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/etc/init.d/kmsg start
+ExecStop=/etc/init.d/kmsg stop 
 EOF
 systemctl enable kmsg.service
 systemctl start kmsg.service
