@@ -40,7 +40,7 @@
 # END_OF_HEADER
 #================================================================
 
-WK_DIR="/etc/ssl"
+SSL_DIR="/etc/ssl"
 KEY_DIR="${HOME}/.keys"
 
 #============================
@@ -106,7 +106,7 @@ emailAddress            = optional
 
 
 [ tmp_ca ]
-dir             = $dir
+dir             = ${WK_DIR}
 certs           = \$dir/certs
 crl_dir         = \$dir/crl
 database        = \$dir/index.txt
@@ -168,22 +168,22 @@ CreerAutorite(){
 
     [ ${flagOptVerbose} -eq 1 ]&& echo "CreerAutorite"
 
-    if [ ! -f  ${dir}/cacert.pem ];then
+    if [ ! -f  ${WK_DIR}/cacert.pem ];then
 
-        [ -d  ${dir} ] && echo "${SCRIPT_NAME}: Folder ${dir} already exit " 1>&2
+        [ -d  ${WK_DIR} ] && echo "${SCRIPT_NAME}: Folder ${WK_DIR} already exit " 1>&2
 
-        CheckAndCreateFolder ${dir}/certs
-        CheckAndCreateFolder ${dir}/crl
-        CheckAndCreateFolder ${dir}/newcerts
-        CheckAndCreateFolder ${dir}/private
-        chmod -R 350 ${dir}/private
-        if [ ! -f ${dir}/index.txt ];then
-            touch ${dir}/index.txt
+        CheckAndCreateFolder ${WK_DIR}/certs
+        CheckAndCreateFolder ${WK_DIR}/crl
+        CheckAndCreateFolder ${WK_DIR}/newcerts
+        CheckAndCreateFolder ${WK_DIR}/private
+        chmod -R 350 ${WK_DIR}/private
+        if [ ! -f ${WK_DIR}/index.txt ];then
+            touch ${WK_DIR}/index.txt
         else
             echo "${SCRIPT_NAME}: ${1}/index.txt already exit " 1>&2
         fi
-        if [ ! -f ${dir}/serial ];then
-            touch ${dir}/serial
+        if [ ! -f ${WK_DIR}/serial ];then
+            touch ${WK_DIR}/serial
         else
             echo "${SCRIPT_NAME}: ${1}/serial already exit " 1>&2
         fi
@@ -194,13 +194,13 @@ CreerAutorite(){
         [ "${OU}" = "" ]||subj="${subj}/OU=Secure Digital Certificate Signing"
         subj="${subj}/CN=${OptAutorite} - Certification Authority Root"
 
-        if [ -f ${dir}/private/ca.key ];then
-            echo "${dir}/private/cat.key already exist, continu..." 1>&2
+        if [ -f ${WK_DIR}/private/ca.key ];then
+            echo "${WK_DIR}/private/cat.key already exist, continu..." 1>&2
         else
             RANDPASS=$(date | md5sum |  cut -c1-16)
             touch ${KEY_DIR}/${OptAutorite}.key
             echo "$RANDPASS" >  ${KEY_DIR}/${OptAutorite}.key
-            openssl genrsa -out ${dir}/private/cakey.pem -passout file:${KEY_DIR}/${OptAutorite}.key ${bits}
+            openssl genrsa -out ${WK_DIR}/private/cakey.pem -passout file:${KEY_DIR}/${OptAutorite}.key ${bits}
         fi
 
 
@@ -208,44 +208,44 @@ CreerAutorite(){
         if [ $flagOptParent -eq 1 ];then
             # Soit le certificat a un parent / intermediaire
             echo "Demande de CSR..."
-            openssl req -new -out ${WK_DIR}/${OptAutorite}/CA.csr -key ${WK_DIR}/${OptAutorite}/private/cakey.pem -subj "${subj}" -config <(PrintMinimalConf)
+            openssl req -new -out ${SSL_DIR}/${OptAutorite}/CA.csr -key ${SSL_DIR}/${OptAutorite}/private/cakey.pem -subj "${subj}" -config <(PrintMinimalConf)
             # On switch sur la conf parent
-            dir=${WK_DIR}/${OptParent}
+            WK_DIR=${SSL_DIR}/${OptParent}
 
             #& La certif parent signe avec sa clé
             echo "On signe"
 
-            openssl ca -batch -days ${days} -create_serial -passin file:${KEY_DIR}/${OptParent}.key -in ${WK_DIR}/${OptAutorite}/CA.csr -out ${WK_DIR}/${OptAutorite}/cacert.pem -extensions ca_ext -notext -config <(PrintMinimalConf;PrintCAConf)
-            mv ${WK_DIR}/${OptAutorite}/cacert.pem ${WK_DIR}/${OptAutorite}/cacert.pem.backup
+            openssl ca -batch -days ${days} -create_serial -passin file:${KEY_DIR}/${OptParent}.key -in ${SSL_DIR}/${OptAutorite}/CA.csr -out ${SSL_DIR}/${OptAutorite}/cacert.pem -extensions ca_ext -notext -config <(PrintMinimalConf;PrintCAConf)
+            mv ${SSL_DIR}/${OptAutorite}/cacert.pem ${SSL_DIR}/${OptAutorite}/cacert.pem.backup
 
-            cat ${WK_DIR}/${OptAutorite}/cacert.pem.backup ${dir}/cacert.pem > ${WK_DIR}/${OptAutorite}/cacert.pem
+            cat ${SSL_DIR}/${OptAutorite}/cacert.pem.backup ${WK_DIR}/cacert.pem > ${SSL_DIR}/${OptAutorite}/cacert.pem
 
 
             # On switch sur la nouvelle autorite
-            dir=${WK_DIR}/${OptAutorite}
+            WK_DIR=${SSL_DIR}/${OptAutorite}
         else
             # Soit le certificat est bien racine / pas de parent
-            openssl req -x509 -sha512 -extensions v3_ca -days ${days} -subj "${subj}" -key ${dir}/private/cakey.pem -out ${dir}/cacert.pem -config <(PrintMinimalConf)
+            openssl req -x509 -sha512 -extensions v3_ca -days ${days} -subj "${subj}" -key ${WK_DIR}/private/cakey.pem -out ${WK_DIR}/cacert.pem -config <(PrintMinimalConf)
         fi
 
-        chgrp ssl-cert ${dir}/private/cakey.pem
-        chgrp ssl-cert ${dir}/cacert.pem
-        chmod 400 ${dir}/private/cakey.pem
-        chmod 444 ${dir}/cacert.pem
-        openssl x509 -serial -noout -in ${dir}/cacert.pem | cut -d= -f2 > ${dir}/serial
-        printf "%X\n" $((0x`cat ${dir}/serial`+1))>${dir}/serial
+        chgrp ssl-cert ${WK_DIR}/private/cakey.pem
+        chgrp ssl-cert ${WK_DIR}/cacert.pem
+        chmod 400 ${WK_DIR}/private/cakey.pem
+        chmod 444 ${WK_DIR}/cacert.pem
+        openssl x509 -serial -noout -in ${WK_DIR}/cacert.pem | cut -d= -f2 > ${WK_DIR}/serial
+        printf "%X\n" $((0x`cat ${WK_DIR}/serial`+1))>${WK_DIR}/serial
 
     else
-        echo "${dir}/cacert.pem already exist, continu..." 1>&2
+        echo "${WK_DIR}/cacert.pem already exist, continu..." 1>&2
     fi
 }
 
 RevokeCertificat(){
-echo dir: $dir
-openssl ca -revoke ${dir}/certs/${OptRevokeCert}.pem -name tmp_ca -passin file:${KEYFILE}  -config <(PrintMinimalConf)
+echo "Repertoire de travail: ${WK_DIR}"
+openssl ca -revoke ${WK_DIR}/certs/${OptRevokeCert}.pem -name tmp_ca -passin file:${KEYFILE}  -config <(PrintMinimalConf)
 
-mv ${dir}/certs/${OptRevokeCert}.pem  ${dir}/certs/${OptRevokeCert}.pem.${DATE}.drop
-mv ${dir}/private/${OptRevokeCert}.key  ${dir}/private/${OptRevokeCert}.key.${DATE}.drop
+mv ${WK_DIR}/certs/${OptRevokeCert}.pem  ${WK_DIR}/certs/${OptRevokeCert}.pem.${DATE}.drop
+mv ${WK_DIR}/private/${OptRevokeCert}.key  ${WK_DIR}/private/${OptRevokeCert}.key.${DATE}.drop
 }
 
 CreerCertificat(){
@@ -312,39 +312,39 @@ CreerCertificat(){
 
     [ ${flagOptVerbose} -eq 1 ]&& echo "CreerCertificat"
 
-    if [ -f ${dir}/private/${firstCN}.key ];then
-        echo "${dir}/private/${firstCN}.key already exist, continu..." 1>&2
+    if [ -f ${WK_DIR}/private/${firstCN}.key ];then
+        echo "${WK_DIR}/private/${firstCN}.key already exist, continu..." 1>&2
     else
-        openssl genrsa  -out ${dir}/private/${firstCN}.key ${bits}
+        openssl genrsa  -out ${WK_DIR}/private/${firstCN}.key ${bits}
     fi
 
-    if [ ! -f ${dir}/certs/${firstCN}.pem ];then
+    if [ ! -f ${WK_DIR}/certs/${firstCN}.pem ];then
 
         if [ ${flagOptVerbose} -eq 1 ];then
-            echo "openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config <(";PrintMinimalConf;echo ")"
+            echo "openssl req -new -sha256 -key ${WK_DIR}/private/${firstCN}.key -out ${WK_DIR}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config <(";PrintMinimalConf;echo ")"
         fi
-        openssl req -new -sha256 -key ${dir}/private/${firstCN}.key -out ${dir}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config  <(PrintMinimalConf)
+        openssl req -new -sha256 -key ${WK_DIR}/private/${firstCN}.key -out ${WK_DIR}/newcerts/${firstCN}.csr -nodes -subj "${subj}" -config  <(PrintMinimalConf)
 
         if [ ${flagOptVerbose} -eq 1 ];then
-            echo "openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions cert -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem -config <(";PrintMinimalConf;PrintCertConf; echo ")"
+            echo "openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions cert -in ${WK_DIR}/newcerts/${firstCN}.csr -out ${WK_DIR}/certs/${firstCN}.pem -config <(";PrintMinimalConf;PrintCertConf; echo ")"
         fi
-        openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions cert -in ${dir}/newcerts/${firstCN}.csr -out ${dir}/certs/${firstCN}.pem -config <(PrintMinimalConf;PrintCertConf)
+        openssl ca -name tmp_ca -batch -passin file:${KEYFILE} -extensions cert -in ${WK_DIR}/newcerts/${firstCN}.csr -out ${WK_DIR}/certs/${firstCN}.pem -config <(PrintMinimalConf;PrintCertConf)
 
         RANDPASS=$(date | md5sum |  cut -c1-8)
 
         if [ ${flagOptVerbose} -eq 1 ];then
-            echo "openssl pkcs12 -export -password pass:$RANDPASS -inkey ${dir}/private/${firstCN}.key -in ${dir}/certs/${firstCN}.pem -name "${firstCN}" -certfile ${dir}/cacert.pem -caname "${ca}" -out ${dir}/${firstCN}.p12"
+            echo "openssl pkcs12 -export -password pass:$RANDPASS -inkey ${WK_DIR}/private/${firstCN}.key -in ${WK_DIR}/certs/${firstCN}.pem -name "${firstCN}" -certfile ${WK_DIR}/cacert.pem -caname "${ca}" -out ${WK_DIR}/${firstCN}.p12"
         fi
-        openssl pkcs12 -export -password pass:$RANDPASS -inkey ${dir}/private/${firstCN}.key -in ${dir}/certs/${firstCN}.pem -name "${firstCN}" -certfile ${dir}/cacert.pem -caname "${ca}" -out ${dir}/${firstCN}.p12
+        openssl pkcs12 -export -password pass:$RANDPASS -inkey ${WK_DIR}/private/${firstCN}.key -in ${WK_DIR}/certs/${firstCN}.pem -name "${firstCN}" -certfile ${WK_DIR}/cacert.pem -caname "${ca}" -out ${WK_DIR}/${firstCN}.p12
 
         echo "password : $RANDPASS"
-        echo $RANDPASS >  ${dir}/${firstCN}.passwd
-        chmod 400 ${dir}/private/${firstCN}.key
-        chmod 444 ${dir}/certs/${firstCN}.pem
-        chgrp ssl-cert ${dir}/certs/${firstCN}.pem
-        chgrp ssl-cert ${dir}/private/${firstCN}.key
+        echo $RANDPASS >  ${WK_DIR}/${firstCN}.passwd
+        chmod 400 ${WK_DIR}/private/${firstCN}.key
+        chmod 444 ${WK_DIR}/certs/${firstCN}.pem
+        chgrp ssl-cert ${WK_DIR}/certs/${firstCN}.pem
+        chgrp ssl-cert ${WK_DIR}/private/${firstCN}.key
     else
-        echo "${dir}/certs/${firstCN}.pem already exist, continu..." 1>&2
+        echo "${WK_DIR}/certs/${firstCN}.pem already exist, continu..." 1>&2
     fi
 }
 
@@ -400,7 +400,6 @@ flagOptAutorite=0
 flagOptDefault=0
 flagOptServeur=0
 flagOptClient=0
-flagOptPath=0
 
   #== options par d‚faut du script ==#
 flagOptMenu=1;
@@ -526,7 +525,6 @@ if [ $flagOptMenu -eq 1 ];then
     exit 0
 fi
 if [ ! -f /etc/default/ssl ];then
-
     DoDefault
 fi
 
@@ -561,7 +559,7 @@ if [ "${flagOptAutorite}" = "1" ];then
                     [[ -r $KEYFILE ]] || echo $KEYFILE not readable 1>&2 && exit 1;
                 else
                     if [ "${flagOptMontre}" = "1" ];then
-                        openssl x509 -in ${dir}/certs/${OptCert}.pem -noout -text
+                        openssl x509 -in ${WK_DIR}/certs/${OptCert}.pem -noout -text
                     fi
                 fi
             fi
