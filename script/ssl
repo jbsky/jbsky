@@ -8,14 +8,13 @@
 #% DESCRIPTION
 #% Script helping to generate and manage SSL certificates.
 #%
-#% /!\Don't forget to put the following lines in /etc/default/openssl
-#%
 #% OPTIONS
-#%    -a                                                create authority
+#%    -a                                                authority create or choose
+#%    -p                                                design parent when create authority
 #%    -m                                                show cert
 #%    -s                                                create cert server
-#%    -r                                                revoke cert
 #%    -c                                                create cert client
+#%    -r                                                revoke cert
 #%    -h                                                print this help
 #%    -v                                                verbose
 #%
