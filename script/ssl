@@ -60,13 +60,13 @@ CheckAndCreateFolder(){
 #============================
 #  Renseigne les variables passees par defaut du sujet dans OpenSSL
 DoDefault(){
-    [ ${flagOptVerbose} -eq 1 ] &&     echo "DoDefault"
+    [ ${flagOptVerbose} -eq 1 ] && echo "DoDefault"
 
     cat >/etc/default/ssl << EOF
-email=mail@super.fr
+email=
 bits=8192
 days=365
-O=MySuperOrg
+O=
 L=
 ST=
 C=FR
