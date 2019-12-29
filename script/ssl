@@ -22,7 +22,7 @@
 #%
 #================================================================
 #- IMPLEMENTATION
-#-    version         ${SCRIPT_NAME} 0.0.1
+#-    version         ${SCRIPT_NAME} 0.1.0
 #-    author        Jbsky
 #-    copyright
 #-    license         GNU General Public License
@@ -30,6 +30,7 @@
 #================================================================
 #  HISTORY
 #     2016/03/01 : Script creation
+#     2029/12/29 : => 0.1.0
 #
 #================================================================
 #  DEBUG OPTION
