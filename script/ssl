@@ -530,19 +530,17 @@ fi
 
 . /etc/default/ssl
 
-if [ $flagOptAutorite -eq 1 ];then
-    dir="${WK_DIR}/$OptAutorite"
-    KEYFILE="${KEY_DIR}/$OptAutorite.key"
-else
-    dir="${WK_DIR}/${O,,}"
-    KEYFILE="${KEY_DIR}/${O,,}.key"
-
-fi
-
 if [ "${flagOptAutorite}" = "1" ];then
-
-    if [ "${O,,}" != "$optAutorite" ] && [ ! -d ${dir} ];then
-        echo "Nouveau repertoire de travail : $dir"
+    WK_DIR="${SSL_DIR}/$OptAutorite"
+    KEYFILE="${KEY_DIR}/$OptAutorite.key"
+    if [ ${flagOptParent} -eq 1 ]&&[ ! -d ${SSL_DIR}/${OptParent} ];then
+        echo "The parent directory does not exist, please create the parent authority, exit..". 1>&2 && exit 3;
+    fi
+    if [ ${flagOptParent} -eq 1 ]&&[ "${OptAutorite}" = "${OptParent}" ];then
+        echo "Parent and authority have the same name, exit..." 1>&2 && exit 4;
+    fi
+    if [ ! -d ${WK_DIR} ];then
+        echo "Nouveau repertoire de travail : ${WK_DIR}"
         read p
         CreerAutorite
     else
