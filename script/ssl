@@ -235,15 +235,16 @@ CreerAutorite(){
     fi
     CN="${OptAutorite} - Certification Authority Root"
     OU="Secure Digital Certificate Signing"
+    if [ ${flagOptFast} -eq 0 ];then
 
-    for field in ${SSL_FLD[@]}
-    do
-        read -p "Please enter a new value or enter to confirm ${field}=${!field} : " NEW_VALUE
-        if [[ "${NEW_VALUE}" != "" ]];then
-            eval "${field}=${NEW_VALUE}"
-        fi
-    done
-
+        for field in ${SSL_FLD[@]}
+        do
+            read -p "Please enter a new value or enter to confirm ${field}=${!field} : " NEW_VALUE
+            if [[ "${NEW_VALUE}" != "" ]];then
+                eval "${field}=${NEW_VALUE}"
+            fi
+        done
+    fi
 
 
     [ "${C}" = "" ] ||subj="/C=${C}"
@@ -620,7 +621,7 @@ if [ "${flagOptAutorite}" = "1" ];then
     fi
     if [ ! -d "${WK_DIR}" ];then
         echo "Nouveau repertoire de travail : ${WK_DIR}"
-        if [ ${flagOptFast} -eq 1 ]&& [ ${flagOptParent} -eq 1 ]; then
+        if [ ${flagOptFast} -eq 1 ]&& [ ${flagOptParent} -eq 0 ]; then
             echo "The --fast option with the creation of an authority certificate without parent is incompatible" 1>&2 && exit 5;
         fi
         CreerAutorite
