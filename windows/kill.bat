@@ -1,0 +1,1 @@
+taskkill /IM %1%.* /F
