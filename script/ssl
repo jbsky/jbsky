@@ -228,9 +228,9 @@ CreerAutorite(){
             done
         fi
         WK_DIR="${SSL_DIR}/${OptAutorite}"
+    else
+        O=${OptAutorite}
     fi
-
-    O=${OptAutorite}
     OU="Secure Digital Certificate Signing"
 
     for field in ${SSL_FLD[@]}
