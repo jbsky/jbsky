@@ -3,22 +3,24 @@
 # HEADER
 #================================================================
 #% SYNOPSIS
-#+    ${SCRIPT_NAME} -a Root -c -s -o
-#+    ${SCRIPT_NAME} -a Root -m ocsp.example.com
-#+    ${SCRIPT_NAME} -a Root -r ocsp.example.com
-#+    ${SCRIPT_NAME} -a Int1 -m mysite.example.com
+#+    ${SCRIPT_NAME} -a Root
+#+    ${SCRIPT_NAME} -a Int1 -p Root [-f]
+#+    ${SCRIPT_NAME} -a Root -c -s -o ocsp.example.com [-f]
+#+    ${SCRIPT_NAME} -a Int1 -s mysite.example.com [-f]
+#+    ${SCRIPT_NAME} -a Root -r ocsp.example.com [-f]
+#+    ${SCRIPT_NAME} -a Int1 -m mysite.example.com [-f]
 #+
 #% DESCRIPTION
 #% Script helping to generate and manage SSL certificates.
 #%
 #% OPTIONS
-#%    -a $name --authority $name                        Create a new authority or choose an existing authority
-#%    -p $name --parent    $name                        Relative parent only used when create authority
+#%    -a $name | --authority=$name                        Create a new authority or choose an existing authority
+#%    -p $name | --parent=$name                        Relative parent only used when create authority
 #%    -m $CN                                            show cert
-#%    -s $CN | --server $CN                             Add nsCertType server and extendedKeyUsage serverAuth
-#%    -c $CN | --client $CN                             Add nsCertType client and extendedKeyUsage clientAuth
-#%    -o $CN | --ocsp   $CN                             Add extendedKeyUsage OCSPSigning
-#%    -r $CN | --revoke $CN                             Revoke cert
+#%    -s $CN | --server=$CN                             Add nsCertType server and extendedKeyUsage serverAuth
+#%    -c $CN | --client=$CN                             Add nsCertType client and extendedKeyUsage clientAuth
+#%    -o $CN | --ocsp=$CN                             Add extendedKeyUsage OCSPSigning
+#%    -r $CN | --revoke=$CN                             Revoke cert
 #%    -f                                                Create fast without question C/O/OU/C/L/ST/emailAddress
 #%    -h                                                print this help
 #%    -v                                                verbose
@@ -571,7 +573,7 @@ while getopts ${SCRIPT_OPTS} OPTION ; do
 
         s ) flagOptMenu=0;
             getopts_get_optional_argument $@
-            OptCN="${OPTARG}";
+            OptCN="${OPTARG}"
             flagOptServeur=1;;
 
         c ) flagOptMenu=0;
@@ -579,8 +581,7 @@ while getopts ${SCRIPT_OPTS} OPTION ; do
             OptCN=${OPTARG}
             flagOptClient=1;;
 
-        m)  flagOptMenu=0;flagOptMontre=1
-            OptCert="${OPTARG}";;
+        m)  flagOptMenu=0;flagOptMontre=1;OptCert="${OPTARG}";;
 
         h ) usagefull
             exit 0;;
@@ -619,10 +620,9 @@ if [ "${flagOptAutorite}" = "1" ];then
     fi
     if [ ! -d "${WK_DIR}" ];then
         echo "Nouveau repertoire de travail : ${WK_DIR}"
-        if [ ${flagOptFast} -eq 1 ]; then
-            echo "The --fast option with the creation of an authority certificate is incompatible" 1>&2 && exit 5;
+        if [ ${flagOptFast} -eq 1 ]&& [ ${flagOptParent} -eq 1 ]; then
+            echo "The --fast option with the creation of an authority certificate without parent is incompatible" 1>&2 && exit 5;
         fi
-
         CreerAutorite
     else
         [[ -f "${WK_DIR}/default" ]]&& . "${WK_DIR}/default"
