@@ -562,7 +562,10 @@ while getopts ${SCRIPT_OPTS} OPTION ; do
 
         r ) flagOptMenu=0;flagOptRevoke=1;OptRevokeCert="${OPTARG}";;
 
-        o ) flagOptMenu=0;flagOptOCSP=1;;
+        o ) flagOptMenu=0;
+            getopts_get_optional_argument $@
+            OptCN=${OPTARG}
+            flagOptOCSP=1;;
 
         f ) flagOptMenu=0;flagOptFast=1;;
 
