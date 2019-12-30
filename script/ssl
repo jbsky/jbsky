@@ -623,7 +623,7 @@ if [ "${flagOptAutorite}" = "1" ];then
         CreerAutorite
     else
         [[ -f "${WK_DIR}/default" ]]&& . "${WK_DIR}/default"
-        echo ocsp:$ocsp
+
         if [ ${flagOptClient} = 1 ]||[ ${flagOptServeur} -eq 1 ]||[ ${flagOptOCSP} -eq 1 ];then
             [[ -r $KEYFILE ]] && CreerCertificat
             [[ -r $KEYFILE ]] || echo $KEYFILE not readable 1>&2 && exit 1;
