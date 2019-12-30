@@ -231,6 +231,7 @@ CreerAutorite(){
     else
         O=${OptAutorite}
     fi
+    CN="${OptAutorite} - Certification Authority Root"
     OU="Secure Digital Certificate Signing"
 
     for field in ${SSL_FLD[@]}
@@ -252,8 +253,7 @@ CreerAutorite(){
     [ "${O}" = "" ] ||subj="${subj}/O=${O}"
     [ "${OU}" = "" ]||subj="${subj}/OU=${OU}"
     [ "${emailAddress}" = "" ]||subj="${subj}/emailAddress=${emailAddress}"
-
-    subj="${subj}/CN=${OptAutorite} - Certification Authority Root"
+    subj="${subj}/CN=${CN}"
 
     CheckAndCreateFolder "${WK_DIR}/certs"
     CheckAndCreateFolder "${WK_DIR}/crl"
