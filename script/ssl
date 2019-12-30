@@ -242,10 +242,7 @@ CreerAutorite(){
         fi
     done
 
-    read -p "Please enter a URL for ocsp serveur : " ocsp
-    if [[ "ocsp" != "" ]];then
-        echo "ocsp=${ocsp}" > "${WK_DIR}/default"
-    fi
+
 
     [ "${C}" = "" ] ||subj="/C=${C}"
     [ "${ST}" = "" ]||subj="${subj}/ST=${ST}"
@@ -260,7 +257,10 @@ CreerAutorite(){
     CheckAndCreateFolder "${WK_DIR}/newcerts"
     CheckAndCreateFolder "${WK_DIR}/private"
     CheckAndCreateFolder "${WK_DIR}/p12"
-
+    read -p "Please enter a URL for ocsp serveur : " ocsp
+    if [[ "ocsp" != "" ]];then
+        echo "ocsp=${ocsp}" > "${WK_DIR}/default"
+    fi
     chmod -R 750 "${WK_DIR}/private"
     touch "${WK_DIR}/index.txt"
     touch "${WK_DIR}/serial"
