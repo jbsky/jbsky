@@ -8,20 +8,23 @@
 #+    ${SCRIPT_NAME} -a Root -c -s -o ocsp.example.com [-f]
 #+    ${SCRIPT_NAME} -a Int1 -s mysite.example.com [-f]
 #+    ${SCRIPT_NAME} -a Root -r ocsp.example.com [-f]
-#+    ${SCRIPT_NAME} -a Int1 -m mysite.example.com [-f]
+#+    ${SCRIPT_NAME} -a Int1 -l
+#+    ${SCRIPT_NAME} -a Int1 -t mysite.example.com
 #+
 #% DESCRIPTION
 #% Script helping to generate and manage SSL certificates.
 #%
 #% OPTIONS
-#%    -a $name | --authority=$name                        Create a new authority or choose an existing authority
-#%    -p $name | --parent=$name                        Relative parent only used when create authority
-#%    -m $CN                                            show cert
+#%    -a $name | --authority=$name                      Create a new authority or choose an existing authority
+#%    -p $name | --parent=$name                         Relative parent only used when create authority
 #%    -s $CN | --server=$CN                             Add nsCertType server and extendedKeyUsage serverAuth
 #%    -c $CN | --client=$CN                             Add nsCertType client and extendedKeyUsage clientAuth
-#%    -o $CN | --ocsp=$CN                             Add extendedKeyUsage OCSPSigning
+#%    -o $CN | --ocsp=$CN                               Add extendedKeyUsage OCSPSigning
+#%    -m $CN | --mail=$CN                               Add nsCertType client and emailProtection
 #%    -r $CN | --revoke=$CN                             Revoke cert
-#%    -f                                                Create fast without question C/O/OU/C/L/ST/emailAddress
+#%    -f                                                Create fast without question C/O/OU/L/ST/emailAddress
+#%    -t $CN                                            Text out cert
+#%    -l                                                List cert
 #%    -h                                                print this help
 #%    -v                                                verbose
 #%
@@ -51,6 +54,12 @@ bits=8192
 days=365
 ocsp=
 
+C=""
+ST=""
+L=""
+O=""
+OU=""
+emailAddress=""
 
 # typeset -A SSL_FLD
 # Ordre ou sont posees les questions
@@ -62,7 +71,30 @@ SSL_FLD=(
     ST
     emailAddress
 )
+#============================
+#  PARSE OPTIONS WITH GETOPTS
+#============================
 
+  #== set short options ==#
+SCRIPT_OPTS='hvsr:ca:-:t:p:oflm'
+
+  #== set long options associated with short one ==#
+typeset -A ARRAY_OPTS
+ARRAY_OPTS=(
+    [help]=h
+    [text]=t
+    [verbose]=v
+    [revoke]=r
+    [server]=s
+    [client]=c
+    [mail]=m
+    [authority]=a
+    [parent]=p
+    [info]=i
+    [list]=l
+    [ocsp]=o
+    [fast]=f
+)
 #============================
 #  FUNCTIONS
 #============================
@@ -82,20 +114,16 @@ CheckAndCreateFolder(){
 #  FUNCTIONS impression d'une partie du fichier openssl.cnf
 #============================
 PrintOCSPServerConf(){
-printf "
-[ v3_OCSP ]
+    printf "[ v3_OCSP ]
 basicConstraints = CA:FALSE
 keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-extendedKeyUsage = OCSPSigning
-"
+extendedKeyUsage = OCSPSigning\n"
 }
 #============================
 #  FUNCTIONS impression d'une partie du fichier openssl.cnf
 #============================
 PrintMinimalConf(){
-printf "
-
-[ req ]
+    printf "[ req ]
 distinguished_name = req_distinguished_name
 
 [ req_distinguished_name ]
@@ -105,8 +133,6 @@ distinguished_name = req_distinguished_name
 # keyUsage = nonRepudiation, digitalSignature, keyEncipherment
 # extendedKeyUsage = serverAuth, clientAuth, OCSPSigning
 
-
-
 [ policy_match ]
 countryName             = match
 stateOrProvinceName     = optional
@@ -114,8 +140,6 @@ organizationName        = match
 organizationalUnitName  = optional
 commonName              = supplied
 emailAddress            = optional
-
-
 
 [ tmp_ca ]
 dir             = ${WK_DIR}
@@ -140,76 +164,64 @@ policy          = policy_match
 
 # Ajout de la partie suivante pour signer un certif d'autorite enfant
 [ ca ]
-default_ca      = tmp_ca
-"
-
-
+default_ca      = tmp_ca\n"
 }
 #============================
 #  FUNCTIONS impression d'une partie du fichier openssl.cnf
 #============================
 Print_V3CAConf(){
-printf "
-
-[ v3_ca ]
+    printf "[ v3_ca ]
 subjectKeyIdentifier=hash
 authorityKeyIdentifier=keyid:always,issuer
 basicConstraints = critical,CA:true
 keyUsage = cRLSign, keyCertSign
-nsCertType = sslCA, emailCA
-"
+nsCertType = sslCA, emailCA\n"
 }
 #============================
 #  FUNCTIONS impression d'une partie du fichier openssl.cnf
 #============================
 PrintCAConf(){
-printf "
-
-[ ca_ext ]
+    printf "[ ca_ext ]
 keyUsage = critical,keyCertSign,cRLSign
 basicConstraints = critical,CA:true
 subjectKeyIdentifier = hash
-authorityKeyIdentifier = keyid:always
-"
+authorityKeyIdentifier = keyid:always\n"
 }
 #============================
 #  FUNCTIONS impression d'une partie du fichier openssl.cnf
 #============================
+
+
 PrintCertConf(){
-printf "
-[cert]
+    printf "[ cert ]
 subjectKeyIdentifier              = hash
 authorityKeyIdentifier            = keyid,issuer:always
 issuerAltName                     = issuer:copy
 basicConstraints                  = critical,CA:FALSE
 keyUsage                          = digitalSignature, nonRepudiation, keyEncipherment
 extendedKeyUsage                  = ${extendedKeyUsage}
-nsComment                         = \"OpenSSL Generated Certificate\"
-"
-if [ "${nsCertType}" != "" ];then
-printf "nsCertType                        = ${nsCertType}
-"
-fi
-if [ "${ocsp}" != "" ]; then
-    printf "authorityInfoAccess = OCSP;URI:http://${ocsp}
-"
-fi
-if [ "${flagOptServeur}" = "1" ];then
-printf "subjectAltName                    = @alt_names
+nsComment                         = \"OpenSSL Generated Certificate\"\n"
 
-[alt_names]
-${alt_names}
-"
-fi
+    if [ "${nsCertType}" != "" ];then
+        printf "nsCertType                        = ${nsCertType}\n"
+    fi
+    if [ "${ocsp}" != "" ]; then
+        printf "authorityInfoAccess = OCSP;URI:http://${ocsp}\n"
+    fi
+    if [ ${flagOptServeur} -eq 1 ]&& [ ${flagOptMail} -eq 1 ];then
+        printf "subjectAltName                    = @alt_names,email:move\n\n[alt_names]\n${alt_names}\n"
+    else
+        if [ ${flagOptServeur} -eq 1 ]&& [ ${flagOptMail} -eq 0 ];then
+            printf "subjectAltName                    = @alt_names\n\n[alt_names]\n${alt_names}\n"
+        else
+            printf "subjectAltName                    =email:move\n"
+        fi
+    fi
 }
 #============================
 #  FUNCTIONS Creation d'un certificat d'autorite
 #============================
 CreerAutorite(){
-    C=""
-    ST=""
-    L=""
-    emailAddress=""
 
     if [ ${flagOptParent} -eq 1 ];then
 
@@ -270,14 +282,14 @@ CreerAutorite(){
     RANDPASS=$(date | md5sum |  cut -c1-16)
     touch "${KEY_DIR}/${OptAutorite}.key"
     echo "$RANDPASS" >  "${KEY_DIR}/${OptAutorite}.key"
-    openssl genrsa -out "${WK_DIR}/private/cakey.pem" -passout file:"${KEY_DIR}/${OptAutorite}.key" ${bits}
+    openssl genrsa -aes256 -out "${WK_DIR}/private/cakey.pem" -passout file:"${KEY_DIR}/${OptAutorite}.key" ${bits}
 
 
     # Soit le nouveau certificat d'autorite a un parent => certificat d'autorite intermediaire
     if [ ${flagOptParent} -eq 1 ];then
 
         # Creation d'un CSR...
-        openssl req -new -out "${SSL_DIR}/${OptAutorite}/CA.csr" -key "${SSL_DIR}/${OptAutorite}/private/cakey.pem" -subj "${subj}" -config <(PrintMinimalConf)
+        openssl req -new -out "${SSL_DIR}/${OptAutorite}/CA.csr" -key "${SSL_DIR}/${OptAutorite}/private/cakey.pem" -passin file:"${KEY_DIR}/${OptAutorite}.key" -subj "${subj}" -config <(PrintMinimalConf)
 
         # On switch sur la conf parent
         WK_DIR="${SSL_DIR}/${OptParent}"
@@ -292,7 +304,7 @@ CreerAutorite(){
         WK_DIR="${SSL_DIR}/${OptAutorite}"
     else
         # Soit le certificat est bien racine / pas de parent
-        openssl req -x509 -sha512 -extensions v3_ca -days ${days} -subj "${subj}" -key "${WK_DIR}/private/cakey.pem" -out "${WK_DIR}/cacert.pem" -config <(PrintMinimalConf;Print_V3CAConf)
+        openssl req -x509 -sha512 -extensions v3_ca -days ${days} -subj "${subj}" -key "${WK_DIR}/private/cakey.pem" -passin file:"${KEY_DIR}/${OptAutorite}.key" -out "${WK_DIR}/cacert.pem" -config <(PrintMinimalConf;Print_V3CAConf)
     fi
 
     chgrp ssl-cert "${WK_DIR}/private/cakey.pem"
@@ -326,12 +338,7 @@ CreerCertificat(){
     # On compte le nombre de champ a extraire par le caractere ","
     COUNTER=$(($(echo ${WK_SUB} | grep -o "," | wc -l)+1))
 
-    C=""
-    ST=""
-    L=""
-    O=""
-    OU=""
-    emailAddress=""
+
 
     if [ "${COUNTER}" -gt "0" ];then
         for ((i=1;i<=${COUNTER};i++));
@@ -349,11 +356,16 @@ CreerCertificat(){
             fi
         done
     fi
+
     extendedKeyUsage=""
     nsCertType=""
-    if [ ${flagOptClient} -eq 1 ];then
+    if [ ${flagOptClient} -eq 1 ]||[ ${flagOptMail} -eq 1 ];then
         nsCertType="client"
         extendedKeyUsage="clientAuth"
+    fi
+    if [ ${flagOptMail} -eq 1 ];then
+        [[ "${extendedKeyUsage}" != "" ]] && extendedKeyUsage="${extendedKeyUsage}, emailProtection"
+        [[ "${extendedKeyUsage}" == "" ]] && extendedKeyUsage="clientAuth, emailProtection"
     fi
     if [ ${flagOptServeur} -eq 1 ];then
         [[ "${nsCertType}" != "" ]] && nsCertType="${nsCertType}, server"
@@ -487,37 +499,16 @@ flagOptAutorite=0
 flagOptDefault=0
 flagOptServeur=0
 flagOptClient=0
-flagOptMenu=1
+flagOptMenu=0
 flagOptDir=0
 flagOptParent=0
 flagOptOCSP=0
 flagOptRevoke=0
 flagOptFast=0
+flagOptList=0
+flagOptText=0
+flagOptMail=0
 
-
-
-#============================
-#  PARSE OPTIONS WITH GETOPTS
-#============================
-
-  #== set short options ==#
-SCRIPT_OPTS='hvsr:ca:-:m:p:of'
-
-  #== set long options associated with short one ==#
-typeset -A ARRAY_OPTS
-ARRAY_OPTS=(
-    [help]=h
-    [montre]=m
-    [verbose]=v
-    [revoke]=r
-    [server]=s
-    [client]=c
-    [authority]=a
-    [parent]=p
-    [info]=i
-    [ocsp]=o
-    [fast]=f
-)
 
   #== parse options ==#
 while getopts ${SCRIPT_OPTS} OPTION ; do
@@ -559,30 +550,38 @@ while getopts ${SCRIPT_OPTS} OPTION ; do
         fi
     }
     case "$OPTION" in
-        a ) flagOptMenu=0;flagOptAutorite=1;OptAutorite="${OPTARG}";;
+        a ) flagOptMenu=1;flagOptAutorite=1;OptAutorite="${OPTARG}";;
 
-        p ) flagOptMenu=0;flagOptParent=1;OptParent="${OPTARG}";;
+        p ) flagOptMenu=1;flagOptParent=1;OptParent="${OPTARG}";;
 
-        r ) flagOptMenu=0;flagOptRevoke=1;OptRevokeCert="${OPTARG}";;
+        r ) flagOptMenu=1;flagOptRevoke=1;OptRevokeCert="${OPTARG}";;
 
-        o ) flagOptMenu=0;
+        o ) flagOptMenu=1;
             getopts_get_optional_argument $@
             OptCN=${OPTARG}
             flagOptOCSP=1;;
 
-        f ) flagOptMenu=0;flagOptFast=1;;
+        f ) flagOptMenu=1;flagOptFast=1;;
 
-        s ) flagOptMenu=0;
+        s ) flagOptMenu=1;
             getopts_get_optional_argument $@
             OptCN="${OPTARG}"
             flagOptServeur=1;;
 
-        c ) flagOptMenu=0;
+        c ) flagOptMenu=1;
             getopts_get_optional_argument $@
             OptCN=${OPTARG}
             flagOptClient=1;;
 
-        m)  flagOptMenu=0;flagOptMontre=1;OptCert="${OPTARG}";;
+        m ) flagOptMenu=1;
+            getopts_get_optional_argument $@
+            emailAddress=${OPTARG}
+            OptCN=${emailAddress}
+            flagOptMail=1;;
+
+        t)  flagOptMenu=1;flagOptText=1;OptCert="${OPTARG}";;
+
+        l)  flagOptMenu=1;flagOptList=1;;
 
         h ) usagefull
             exit 0;;
@@ -605,8 +604,8 @@ shift $((${OPTIND} - 1)) ## shift options
 #============================
 #  MAIN SCRIPT
 #============================
-if [ ${flagOptMenu} -eq 1 ];then
-    usagefull
+if [ ${flagOptMenu} -eq 0 ];then
+    usage
     exit -1
 fi
 
@@ -636,10 +635,14 @@ if [ "${flagOptAutorite}" = "1" ];then
                 [[ -r $KEYFILE ]] && RevokeCertificat
                 [[ -r $KEYFILE ]] || echo $KEYFILE not readable 1>&2 && exit 1;
             else
-                if [ ${flagOptMontre} -eq 1 ];then
+                if [ ${flagOptText} -eq 1 ];then
                     openssl x509 -in "${WK_DIR}/certs/${OptCert}.pem" -noout -text
                 else
-                    echo "No option specified, exit..." 1>&2 && exit 10;
+                    if [ ${flagOptList} -eq 1 ];then
+                        ls -A "${WK_DIR}/certs/" | sed 's/.pem//g'
+                    else
+                        echo "No option specified, exit..." 1>&2 && exit 10;
+                    fi
                 fi
             fi
         fi
