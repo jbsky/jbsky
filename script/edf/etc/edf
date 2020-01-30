@@ -1,0 +1,15 @@
+service edf-expose-metric
+{
+  type = unlisted
+  port = 10111
+  socket_type = stream
+  wait = no
+  user = root
+  server = /usr/local/bin/httpwrapper
+  server_args = /usr/local/bin/edf-expose-metric
+  disable = no
+  only_from = 0.0.0.0
+  log_type = FILE /dev/null
+  protocol = TCP
+}
+

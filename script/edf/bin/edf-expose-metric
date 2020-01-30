@@ -1,0 +1,42 @@
+#!/bin/bash
+# printMetric name description type value
+function printMetric {
+    echo "# HELP $1 $2"
+    echo "# TYPE $1 $3"
+    echo "$1 $4"
+}
+. /tmp/edf
+
+printMetric "Heures_pleines" "HCHP" "COUNTER" "$HCHP"
+printMetric "Heures_creuses" "HCHC" "COUNTER" "$HCHC"
+printMetric "Mot_d_etat" "MOTDETAT" "GAUGE" "$MOTDETAT"
+printMetric "Intensite_souscrite_I" "ISOUSC" "GAUGE" "$ISOUSC"
+#printMetric "Option_tarifaire" "OPTARIF" "GAUGE" "$OPTARIF"
+printMetric "Identifiant_du_compteur" "ADCO" "GAUGE" "$ADCO"
+
+printMetric "Puissance_apparente_VA" "PPAP" "GAUGE" "$PAPP"
+#printMetric "Groupe_horaire_si_option" "HHPHC" "GAUGE" "$HHPHC"
+#printMetric "Periode_tarifaire_en_cours" "PTEC" "GAUGE" "$PTEC"
+
+if [[ "${PTEC}" == "HP.." ]];then
+	printMetric "Periode_tarifaire_en_cours_HP" "PTEC" "GAUGE" "1"
+	printMetric "Periode_tarifaire_en_cours_HC" "PTEC" "GAUGE" "0"
+else
+	printMetric "Periode_tarifaire_en_cours_HP" "PTEC" "GAUGE" "0"
+	printMetric "Periode_tarifaire_en_cours_HC" "PTEC" "GAUGE" "1"
+fi
+printMetric "Intensite_instantanee_A" "IINST" "GAUGE" "$IINST"
+printMetric "Intensite_maximale_A" "IMAX" "GAUGE" "$IMAX"
+
+HCHP=005594895
+HCHC=005702480
+MOTDETAT=000000
+ISOUSC=30
+OPTARIF=HC..
+ADCO=000000000000
+PAPP=00460
+HHPHC=C
+PTEC=HP..
+IINST=002
+IMAX=034
+

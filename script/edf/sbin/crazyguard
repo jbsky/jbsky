@@ -1,0 +1,9 @@
+#!/bin/bash
+sleep 10
+while [ $? = 0 ]
+do
+	sleep 1
+	/bin/ping 192.168.3.254 -c 1 > /dev/null 2>&1
+done
+logger "Crazyguard: reboot now"
+reboot

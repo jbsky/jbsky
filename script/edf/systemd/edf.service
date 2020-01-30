@@ -1,0 +1,15 @@
+[Unit]
+Description=EDF teleinfo daemon
+After=wpa_supplicant.service
+
+[Service]
+Type=simple
+#User=jeedom
+#Group=jeedom
+#UMask=027
+
+ExecStart=/usr/local/bin/edf-teleinfo
+PIDFile=/tmp/edf-teleinfo
+
+[Install]
+WantedBy=default.target

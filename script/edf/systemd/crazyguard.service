@@ -1,0 +1,11 @@
+[Unit]
+Description=Garde fou wifi
+After=wpa_supplicant.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/sbin/crazyguard
+PIDFile=/tmp/crazyguard.ping
+
+[Install]
+WantedBy=default.target

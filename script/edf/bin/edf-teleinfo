@@ -1,0 +1,39 @@
+#!/bin/bash
+TMPFILE=/tmp/edf
+DEV=/dev/ttyUSB0
+stty -F ${DEV} 1200 sane evenp parenb cs7 -crtscts
+
+cat > ${TMPFILE} <<EOF
+HCHP
+HCHC
+MOTDETAT
+ISOUSC
+OPTARIF
+ADCO
+PAPP
+HHPHC
+PTEC
+IINST
+IMAX
+EOF
+function readdev(){
+while read TYPE VALUE CHECKSUM;do
+
+	case "$TYPE" in
+
+HCHP)sed -i  "s/HCHP.*/HCHP=$VALUE/g" ${TMPFILE} ;;
+HCHC)sed -i  "s/HCHC.*/HCHC=$VALUE/g" ${TMPFILE} ;;
+MOTDETAT)sed -i  "s/MOTDETAT.*/MOTDETAT=$VALUE/g" ${TMPFILE} ;;
+ISOUSC)sed -i  "s/ISOUSC.*/ISOUSC=$VALUE/g" ${TMPFILE} ;;
+OPTARIF)sed -i  "s/OPTARIF.*/OPTARIF=$VALUE/g" ${TMPFILE} ;;
+ADCO)sed -i  "s/ADCO.*/ADCO=$VALUE/g" ${TMPFILE} ;;
+PAPP)sed -i  "s/PAPP.*/PAPP=$VALUE/g" ${TMPFILE} ;;
+HHPHC)sed -i  "s/HHPHC.*/HHPHC=$VALUE/g" ${TMPFILE} ;;
+PTEC)sed -i  "s/PTEC.*/PTEC=$VALUE/g" ${TMPFILE} ;;
+IINST)sed -i  "s/IINST.*/IINST=$VALUE/g" ${TMPFILE} ;;
+IMAX)sed -i  "s/IMAX.*/IMAX=$VALUE/g" ${TMPFILE} ;;
+	esac
+
+done < ${DEV}
+}
+readdev
