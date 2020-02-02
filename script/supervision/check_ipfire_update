@@ -1,0 +1,17 @@
+#!/bin/bash
+STATE_OK=0
+STATE_WARNING=1
+STATE_CRITICAL=2
+STATE_UNKNOWN=3
+STATE_DEPENDENT=4
+SYSTEM=`cat /opt/pakfire/db/lists/core-list.db |grep "core_"`
+PAKFIRE=\$core_release=\"`cat /opt/pakfire/db/core/mine`\"\;
+if [[ $SYSTEM == $PAKFIRE ]]
+then
+echo $STATE_OK
+exit 0
+else
+echo $STATE_CRITICAL
+exit 2
+fi
+exit 3
